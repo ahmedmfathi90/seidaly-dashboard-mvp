@@ -29,6 +29,7 @@ const specialties = [
 export default function WebRTCCamera({ onCapture, onCancel, medicalSpecialty, setMedicalSpecialty }: WebRTCCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -79,14 +80,52 @@ export default function WebRTCCamera({ onCapture, onCancel, medicalSpecialty, se
   };
 
   const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
+    if (videoRef.current && canvasRef.current && boxRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      const box = boxRef.current;
+
+      const videoRect = video.getBoundingClientRect();
+      const boxRect = box.getBoundingClientRect();
+
+      // Object-cover calculations to map screen to video native resolution
+      const videoRatio = video.videoWidth / video.videoHeight;
+      const containerRatio = videoRect.width / videoRect.height;
+
+      let renderWidth, renderHeight, offsetX = 0, offsetY = 0;
+
+      if (containerRatio > videoRatio) {
+        renderWidth = videoRect.width;
+        renderHeight = videoRect.width / videoRatio;
+        offsetY = (renderHeight - videoRect.height) / 2;
+      } else {
+        renderHeight = videoRect.height;
+        renderWidth = videoRect.height * videoRatio;
+        offsetX = (renderWidth - videoRect.width) / 2;
+      }
+
+      const scaleX = video.videoWidth / renderWidth;
+      const scaleY = video.videoHeight / renderHeight;
+
+      // Map bounding box screen coordinates to native video coordinates
+      const boxRelativeX = boxRect.left - videoRect.left;
+      const boxRelativeY = boxRect.top - videoRect.top;
+
+      const cropX = (boxRelativeX + offsetX) * scaleX;
+      const cropY = (boxRelativeY + offsetY) * scaleY;
+      const cropWidth = boxRect.width * scaleX;
+      const cropHeight = boxRect.height * scaleY;
+
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(
+          video,
+          cropX, cropY, cropWidth, cropHeight,
+          0, 0, cropWidth, cropHeight
+        );
         const base64Data = canvas.toDataURL('image/jpeg', 0.8);
         stopCamera();
         onCapture(base64Data);
@@ -171,7 +210,7 @@ export default function WebRTCCamera({ onCapture, onCancel, medicalSpecialty, se
           <div className="flex-1 bg-black/50 backdrop-blur-[2px]"></div>
           <div className="flex justify-center shrink-0">
             <div className="w-[10vw] bg-black/50 backdrop-blur-[2px]"></div>
-            <div className="w-[80vw] h-[60vh] max-h-[600px] border-2 border-teal-500/80 rounded-2xl relative shadow-[0_0_0_4000px_rgba(0,0,0,0.5)]">
+            <div ref={boxRef} className="w-[80vw] h-[60vh] max-h-[600px] border-2 border-teal-500/80 rounded-2xl relative shadow-[0_0_0_4000px_rgba(0,0,0,0.5)]">
               {/* Corner indicators */}
               <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-teal-400 rounded-tl-xl -ml-[2px] -mt-[2px]"></div>
               <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-teal-400 rounded-tr-xl -mr-[2px] -mt-[2px]"></div>
