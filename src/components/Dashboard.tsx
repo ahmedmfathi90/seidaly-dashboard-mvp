@@ -3,7 +3,7 @@ import {
   Pill, Activity, Camera, ScanBarcode, UserPlus, FileEdit, 
   CheckCircle2, AlertTriangle, Users, BookOpen, Save, 
   Plus, Trash2, Bell, RefreshCw, ChevronLeft, ChevronRight, Check, X,
-  ArrowLeft
+  ArrowLeft, Loader2, UploadCloud
 } from 'lucide-react';
 import PrescriptionUpload from './PrescriptionUpload';
 import MedicationList from './MedicationList';
@@ -141,6 +141,9 @@ export default function Dashboard() {
   const [newDosage, setNewDosage] = useState("");
   const [newForm, setNewForm] = useState("Tablet");
 
+  // Fullscreen Medication Box Scanner sub-page State
+  const [boxScannerViewOpen, setBoxScannerViewOpen] = useState(false);
+
 
   // Medication Box Scanner State & Refs
   const boxScannerInputRef = React.useRef<HTMLInputElement>(null);
@@ -187,6 +190,8 @@ export default function Dashboard() {
       setManualAddOpen(false);
     } else if (scanOpen) {
       setScanOpen(false);
+    } else if (boxScannerViewOpen) {
+      setBoxScannerViewOpen(false);
     } else if (editableMedications) {
       setEditableMedications(null);
     } else if (addMemberOpen) {
@@ -195,7 +200,7 @@ export default function Dashboard() {
   };
 
   // Check if we are in any sub-view to show the back button
-  const isSubViewActive = scanOpen || manualAddOpen || viewArchiveOpen || selectedArchive || editableMedications || addMemberOpen;
+  const isSubViewActive = scanOpen || manualAddOpen || viewArchiveOpen || selectedArchive || editableMedications || addMemberOpen || boxScannerViewOpen;
 
   // --- Medication Actions ---
   const handleMedicationUploadComplete = (medsFromOCR: any[]) => {
@@ -377,6 +382,298 @@ export default function Dashboard() {
     );
   }
 
+  // 1. Box Scanner Fullscreen PWA sub-page
+  if (boxScannerViewOpen) {
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto">
+        <style>{`
+          @keyframes scan-laser {
+            0% { top: 0%; opacity: 0.8; }
+            50% { top: 100%; opacity: 1; }
+            100% { top: 0%; opacity: 0.8; }
+          }
+          .scanner-laser-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #2dd4bf, #2dd4bf, transparent);
+            box-shadow: 0 0 12px 3px rgba(45, 212, 191, 0.8);
+            animation: scan-laser 3s infinite linear;
+          }
+        `}</style>
+        {/* Floating Quick Navigation (Only Back button allowed) */}
+        <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-3.5 flex justify-start items-center shadow-lg" dir="rtl">
+          <button onClick={handleGoBack} className="flex items-center gap-1.5 text-xs font-bold text-teal-400 bg-slate-950/60 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 px-5 py-2.5 rounded-xl transition-all cursor-pointer hover:scale-105">
+            <ArrowLeft className="w-4 h-4 rotate-180" />
+            <span>رجوع للوحة التحكم</span>
+          </button>
+        </div>
+
+        <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl shadow-lg border border-slate-800 p-6 sm:p-8 w-full text-right text-white relative overflow-hidden" dir="rtl">
+          <div className="text-center space-y-2 mb-6">
+            <h2 className="text-2xl font-black text-teal-400">تصوير وفحص علبة الدواء</h2>
+            <p className="text-slate-400 text-xs font-medium">التقط صورة لعلبة الدواء ليتعرف عليها الذكاء الاصطناعي ويجلب لك تفاصيلها فوراً</p>
+          </div>
+
+          {/* Glowing Target Scanner Overlay */}
+          <div className="relative w-full max-w-[280px] aspect-square mx-auto bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center shadow-inner group">
+            {/* 4 Glowing Corner Angles */}
+            <div className="absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-teal-400 rounded-tl"></div>
+            <div className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-teal-400 rounded-tr"></div>
+            <div className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-teal-400 rounded-bl"></div>
+            <div className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-teal-400 rounded-br"></div>
+            
+            {/* Green laser scan line */}
+            <div className="scanner-laser-line"></div>
+            
+            <div className="text-center p-4 space-y-3 z-10">
+              <Camera className="w-10 h-10 text-teal-400/60 mx-auto animate-pulse" />
+              <span className="text-[10px] font-bold text-slate-400 block max-w-[200px] leading-relaxed mx-auto">
+                ضع علبة الدواء داخل هذا المربع المضيء ليقرأها الذكاء الاصطناعي بدقة
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-8 space-y-4 max-w-sm mx-auto">
+            {/* Massive Touch-Friendly Buttons */}
+            <button
+              onClick={() => {
+                if (!isBoxScanning) boxScannerInputRef.current?.click();
+              }}
+              disabled={isBoxScanning}
+              className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 disabled:from-teal-800 disabled:to-teal-900 text-slate-950 font-black py-4 px-6 rounded-2xl cursor-pointer shadow-lg shadow-teal-500/10 transition-all hover:scale-[1.02] active:scale-95 disabled:cursor-wait"
+            >
+              {isBoxScanning ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>جاري فحص العلبة بالذكاء الاصطناعي...</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-5 h-5" />
+                  <span>التقاط صورة علبة الدواء (الكاميرا)</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                if (!isBoxScanning) {
+                  const input = boxScannerInputRef.current;
+                  if (input) {
+                    input.removeAttribute('capture');
+                    input.click();
+                    setTimeout(() => input.setAttribute('capture', 'environment'), 1000);
+                  }
+                }
+              }}
+              disabled={isBoxScanning}
+              className="w-full flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-200 font-bold py-3.5 px-6 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+            >
+              <UploadCloud className="w-5 h-5 text-slate-400" />
+              <span>اختيار من استوديو الصور / الملفات</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Manual Registration Fullscreen PWA sub-page
+  if (manualAddOpen) {
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto animate-in fade-in duration-300">
+        {/* Floating Quick Navigation (Only Back button allowed) */}
+        <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-3.5 flex justify-start items-center shadow-lg" dir="rtl">
+          <button onClick={handleGoBack} className="flex items-center gap-1.5 text-xs font-bold text-teal-400 bg-slate-950/60 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 px-5 py-2.5 rounded-xl transition-all cursor-pointer hover:scale-105">
+            <ArrowLeft className="w-4 h-4 rotate-180" />
+            <span>رجوع للوحة التحكم</span>
+          </button>
+        </div>
+
+        <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-lg text-right text-white" dir="rtl">
+          <div className="flex items-center gap-3 mb-6 border-b border-slate-800 pb-4">
+            <div className="bg-teal-950/40 p-3 rounded-2xl border border-teal-800">
+              <Plus className="w-6 h-6 text-teal-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-teal-400">إضافة دواء يدوياً</h2>
+              <p className="text-slate-400 text-xs mt-0.5 font-medium">سجل أدوية الفيتامينات أو المكملات التي لا تحتاج لمسح روشتة</p>
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-2xl space-y-4">
+              <div>
+                <label className="block text-xs font-extrabold text-slate-350 mb-1.5">اسم الدواء التجاري أو العلمي</label>
+                <input 
+                  type="text" 
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="مثال: بنادول، فيتامين سي، أوميغا 3" 
+                  className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors" 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-350 mb-1.5">الجرعة / الاستخدام اليومي</label>
+                  <input 
+                    type="text" 
+                    value={newDosage}
+                    onChange={(e) => setNewDosage(e.target.value)}
+                    placeholder="مثال: حبة واحدة، 5 مل" 
+                    className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-350 mb-1.5">شكل الدواء الطبي</label>
+                  <select 
+                    value={newForm}
+                    onChange={(e) => setNewForm(e.target.value)}
+                    className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none bg-slate-900 select-custom"
+                  >
+                    <option value="Tablet">أقراص (Tablet)</option>
+                    <option value="Capsule">كبسولات (Capsule)</option>
+                    <option value="Syrup">شراب (Syrup)</option>
+                    <option value="Injection">حقنة (Injection)</option>
+                    <option value="Drop">قطرة (Drop)</option>
+                    <option value="Ointment">مرهم / كريم (Ointment)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 flex justify-between items-center gap-3">
+              <button 
+                onClick={handleManualAddSave}
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-slate-950 font-black text-xs py-3.5 rounded-2xl cursor-pointer transition-all shadow-lg shadow-teal-500/10 active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>إضافة الدواء لملف {activeMember.name}</span>
+              </button>
+              <button 
+                onClick={() => setManualAddOpen(false)}
+                className="px-6 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs py-3.5 rounded-2xl cursor-pointer transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Family Profile Creation Fullscreen PWA sub-page
+  if (addMemberOpen) {
+    const avatars = [
+      { char: "👨", label: "شاب" },
+      { char: "👩", label: "فتاة" },
+      { char: "👶", label: "طفل" },
+      { char: "👴", label: "جد" },
+      { char: "👵", label: "جدة" },
+    ];
+
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto animate-in fade-in duration-300">
+        {/* Floating Quick Navigation (Only Back button allowed) */}
+        <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 p-3.5 flex justify-start items-center shadow-lg" dir="rtl">
+          <button onClick={handleGoBack} className="flex items-center gap-1.5 text-xs font-bold text-teal-400 bg-slate-950/60 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 px-5 py-2.5 rounded-xl transition-all cursor-pointer hover:scale-105">
+            <ArrowLeft className="w-4 h-4 rotate-180" />
+            <span>رجوع للوحة التحكم</span>
+          </button>
+        </div>
+
+        <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-lg text-right text-white" dir="rtl">
+          <div className="flex items-center gap-3 mb-6 border-b border-slate-800 pb-4">
+            <div className="bg-teal-950/40 p-3 rounded-2xl border border-teal-800">
+              <UserPlus className="w-6 h-6 text-teal-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-teal-400">إضافة فرد عائلة جديد</h2>
+              <p className="text-slate-400 text-xs mt-0.5 font-medium">أنشئ ملفاً طبياً مستقلاً لكل شخص لتنظيم مواعيد وجدول الأدوية بدقة</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleAddFamilyMember} className="space-y-5">
+            <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-2xl space-y-4">
+              <div>
+                <label className="block text-xs font-extrabold text-slate-350 mb-1.5">الاسم ثلاثي أو مستعار</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newMemberName}
+                  onChange={(e) => setNewMemberName(e.target.value)}
+                  placeholder="مثال: يوسف، الوالدة، سارة..." 
+                  className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors" 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-350 mb-1.5">صلة القرابة</label>
+                  <select 
+                    value={newMemberRelation}
+                    onChange={(e) => setNewMemberRelation(e.target.value)}
+                    className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none bg-slate-900 select-custom"
+                  >
+                    <option value="الزوجة">الزوجة</option>
+                    <option value="الزوج">الزوج</option>
+                    <option value="الابن">الابن</option>
+                    <option value="الابنة">الابنة</option>
+                    <option value="الأخ">الأخ</option>
+                    <option value="الأخت">الأخت</option>
+                    <option value="الأب">الأب</option>
+                    <option value="الأم">الأم</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <span className="block text-xs font-extrabold text-slate-350 mb-1.5">اختر الأفاتار المناسب</span>
+                  <div className="flex gap-2 justify-start items-center">
+                    {avatars.map((av) => (
+                      <button
+                        key={av.char}
+                        type="button"
+                        onClick={() => setNewMemberAvatar(av.char)}
+                        className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xl transition-all border cursor-pointer hover:scale-105 active:scale-95 ${
+                          newMemberAvatar === av.char 
+                            ? "bg-teal-500/20 border-teal-500 scale-105" 
+                            : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700"
+                        }`}
+                      >
+                        <span>{av.char}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 flex justify-between items-center gap-3">
+              <button 
+                type="submit"
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-slate-950 font-black text-xs py-3.5 rounded-2xl cursor-pointer transition-all shadow-lg shadow-teal-500/10 active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>إنشاء الملف الطبي الفوري</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => setAddMemberOpen(false)}
+                className="px-6 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs py-3.5 rounded-2xl cursor-pointer transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   if (editableMedications) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-500 text-right" dir="rtl">
@@ -499,23 +796,14 @@ export default function Dashboard() {
         </button>
 
         <button 
-          onClick={() => {
-            if (!isBoxScanning) boxScannerInputRef.current?.click();
-          }}
-          disabled={isBoxScanning}
-          className="group bg-slate-900/60 backdrop-blur-md rounded-3xl p-6 text-slate-100 border border-slate-800 shadow-lg hover:shadow-xl transition-all text-right flex flex-col justify-between min-h-[150px] cursor-pointer hover:scale-[1.02] disabled:cursor-wait"
+          onClick={() => setBoxScannerViewOpen(true)}
+          className="group bg-slate-900/60 backdrop-blur-md rounded-3xl p-6 text-slate-100 border border-slate-800 shadow-lg hover:shadow-xl transition-all text-right flex flex-col justify-between min-h-[150px] cursor-pointer hover:scale-[1.02]"
         >
-          <div className="bg-slate-950/40 p-3 rounded-2xl w-fit self-end text-slate-350 group-hover:scale-110 transition-transform border border-slate-800">
-            {isBoxScanning ? (
-              <span className="inline-block w-6 h-6 border-2 border-teal-400 border-t-transparent rounded-full animate-spin"></span>
-            ) : (
-              <Camera className="w-6 h-6 text-teal-400" />
-            )}
+          <div className="bg-slate-950/40 p-3 rounded-2xl w-fit self-end text-teal-400 group-hover:scale-110 transition-transform border border-slate-800">
+            <Camera className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-extrabold text-lg text-white">
-              {isBoxScanning ? "جاري فحص العلبة..." : "تصوير علبة الدواء"}
-            </h3>
+            <h3 className="font-extrabold text-lg text-white">تصوير علبة الدواء</h3>
             <p className="text-slate-400 text-xs mt-1">التقاط صورة للعلبة للتعرف التلقائي على المادة الفعالة ودواعي الاستعمال</p>
           </div>
         </button>
@@ -543,59 +831,6 @@ export default function Dashboard() {
           </div>
         </button>
       </div>
-
-      {/* Manual Add Expandable Dialog */}
-      {manualAddOpen && (
-        <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-800 p-5 shadow-lg text-right mt-2 animate-in slide-in-from-top-4" dir="rtl">
-          <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
-            <h4 className="font-black text-teal-400 flex items-center gap-1">
-              <Plus className="w-4 h-4 text-teal-400" />
-              إضافة دواء يدوياً للجدول اليومي
-            </h4>
-            <button onClick={() => setManualAddOpen(false)} className="text-slate-400 hover:text-slate-300 cursor-pointer">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1">اسم الدواء</label>
-              <input 
-                type="text" 
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="مثال: فيتامين د" 
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:ring-2 focus:ring-teal-500/20 outline-none" 
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1">الجرعة</label>
-              <input 
-                type="text" 
-                value={newDosage}
-                onChange={(e) => setNewDosage(e.target.value)}
-                placeholder="مثال: حبة واحدة" 
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:ring-2 focus:ring-teal-500/20 outline-none" 
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1">الشكل</label>
-              <select 
-                value={newForm}
-                onChange={(e) => setNewForm(e.target.value)}
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:ring-2 focus:ring-teal-500/20 outline-none bg-slate-900"
-              >
-                <option value="Tablet">أقراص (Tablet)</option>
-                <option value="Capsule">كبسولات (Capsule)</option>
-                <option value="Syrup">شراب (Syrup)</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-800">
-            <button onClick={() => setManualAddOpen(false)} className="px-4 py-1.5 text-xs text-slate-400 cursor-pointer">إلغاء</button>
-            <button onClick={handleManualAddSave} className="bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-xs px-5 py-1.5 rounded-lg cursor-pointer">إضافة</button>
-          </div>
-        </div>
-      )}
 
       {/* Main Grid content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -730,7 +965,7 @@ export default function Dashboard() {
 
             {/* Add Member Dynamic Inline Panel */}
             {addMemberOpen && (
-              <form onSubmit={handleAddFamilyMember} className="mt-4 p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3 animate-in slide-in-from-top-3 duration-300">
+              <form style={{ display: 'none' }} onSubmit={handleAddFamilyMember} className="mt-4 p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3 animate-in slide-in-from-top-3 duration-300">
                 <div className="flex justify-between items-center pb-1.5 border-b border-slate-800">
                   <span className="text-xs font-black text-slate-300">إضافة فرد عائلة جديد</span>
                   <button type="button" onClick={() => setAddMemberOpen(false)} className="text-slate-500 hover:text-slate-300">

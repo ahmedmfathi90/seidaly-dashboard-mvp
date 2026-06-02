@@ -146,24 +146,8 @@ Rules:
     });
 
   } catch (err) {
-    console.warn("⚠️ Client-side Gemini scan failed, running offline clinical database simulation:", err);
-    // Offline simulated backup database
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const simMeds = getSimulatedPrescriptionMeds();
-    return simMeds.map(rec => ({
-      id: "med-" + Math.random().toString(36).substring(7),
-      name: `${rec.nameAr} (${rec.name})`,
-      dosage: rec.dosage,
-      form: rec.form,
-      frequency: rec.frequency,
-      duration: rec.duration,
-      specialInstructions: rec.specialInstructions,
-      activeIngredient: rec.activeIngredient,
-      medicalUse: rec.medicalUse,
-      detailedInfo: rec.detailedInfo,
-      timings: ["09:00 AM"],
-      inventoryQty: 30
-    }));
+    console.error("⚠️ Client-side Gemini scan failed:", err);
+    throw new Error("⚠️ لم نتمكن من التعرف على الدواء بدقة. يرجى تصوير العلبة أو الروشتة بوضوح في إضاءة جيدة والمحاولة مجدداً.");
   }
 }
 

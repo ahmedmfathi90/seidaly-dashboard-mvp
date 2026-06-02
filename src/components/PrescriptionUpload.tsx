@@ -129,6 +129,44 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
       ) : (
         <div className="space-y-6">
           <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40 group pre-card">
+            {isScanning && (
+              <div className="absolute inset-0 z-30 flex flex-col justify-center items-center bg-slate-950/40 pointer-events-none">
+                <style>{`
+                  @keyframes scan-laser {
+                    0% { top: 12%; }
+                    50% { top: 88%; }
+                    100% { top: 12%; }
+                  }
+                  .scanner-laser {
+                    position: absolute;
+                    left: 12%;
+                    right: 12%;
+                    height: 2px;
+                    background: linear-gradient(90deg, transparent, #2dd4bf, #4ade80, #2dd4bf, transparent);
+                    box-shadow: 0 0 14px 4px rgba(45, 212, 191, 0.7);
+                    animation: scan-laser 2.2s infinite ease-in-out;
+                  }
+                `}</style>
+                <div className="relative w-64 h-64 border border-teal-500/25 rounded-2xl flex items-center justify-center bg-teal-950/5 shadow-[0_0_25px_rgba(45,212,191,0.08)]">
+                  {/* Glowing corners */}
+                  <div className="absolute -top-1.5 -right-1.5 w-6 h-6 border-t-4 border-r-4 border-teal-400 rounded-tr-lg"></div>
+                  <div className="absolute -top-1.5 -left-1.5 w-6 h-6 border-t-4 border-l-4 border-teal-400 rounded-tl-lg"></div>
+                  <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 border-b-4 border-r-4 border-teal-400 rounded-br-lg"></div>
+                  <div className="absolute -bottom-1.5 -left-1.5 w-6 h-6 border-b-4 border-l-4 border-teal-400 rounded-bl-lg"></div>
+                  
+                  {/* Glowing grid scanner box lines */}
+                  <div className="absolute inset-2 border border-dashed border-teal-500/10 rounded-xl opacity-60"></div>
+                  
+                  {/* Scanning Laser Line */}
+                  <div className="scanner-laser"></div>
+                  
+                  {/* Status Indicator text */}
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold text-teal-400 bg-slate-950/80 px-3 py-1 rounded-full border border-teal-900 shadow-lg animate-pulse">
+                    جاري التحليل...
+                  </span>
+                </div>
+              </div>
+            )}
             <img 
               src={previewUrl} 
               alt="Prescription preview" 
