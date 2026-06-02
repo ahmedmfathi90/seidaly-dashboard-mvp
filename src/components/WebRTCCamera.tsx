@@ -40,6 +40,12 @@ export default function WebRTCCamera({ onCapture, onCancel, medicalSpecialty, se
     };
   }, []);
 
+  useEffect(() => {
+    if (cameraActive && videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [cameraActive, stream]);
+
   const stopCamera = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
