@@ -14,6 +14,7 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -32,9 +33,8 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
     setFile(null);
     setPreviewUrl(null);
     setError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   const handleScan = async () => {
@@ -133,19 +133,46 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
       </div>
 
       {!previewUrl ? (
-        <div 
-          className="border-2 border-dashed border-teal-800 hover:border-teal-500 rounded-3xl bg-teal-950/10 p-12 flex flex-col items-center justify-center cursor-pointer hover:bg-teal-950/20 transition-all text-center"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <div className="bg-slate-950/60 p-4 rounded-2xl shadow-md text-teal-400 mb-4 border border-slate-800/80 animate-pulse">
-            <UploadCloud className="w-8 h-8" />
+        <div className="border-2 border-dashed border-teal-800/80 rounded-3xl bg-teal-950/10 p-8 sm:p-12 flex flex-col items-center justify-center text-center">
+          <div className="bg-slate-950/60 p-4 rounded-2xl shadow-md text-teal-400 mb-4 border border-slate-800/80">
+            <UploadCloud className="w-8 h-8 animate-bounce" />
           </div>
-          <p className="font-extrabold text-teal-300 mb-1">اضغط هنا لرفع الروشتة أو اسحب الملف</p>
-          <p className="text-xs text-teal-500/50 font-semibold">بصيغة JPG, PNG, WEBP (بحد أقصى 5 ميجابايت)</p>
+          
+          <p className="font-extrabold text-teal-300 mb-2">قم بمسح الروشتة ضوئياً</p>
+          <p className="text-xs text-teal-500/50 font-semibold mb-6">بصيغة JPG, PNG, WEBP (بحد أقصى 5 ميجابايت)</p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full max-w-md">
+            {/* Gallery Upload Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-slate-900 hover:bg-slate-805 text-teal-400 border border-teal-800/60 hover:border-teal-400 font-bold py-3.5 px-5 rounded-2xl transition-all shadow-md active:scale-95 text-xs flex items-center justify-center gap-2 cursor-pointer h-12"
+            >
+              <span>📁 رفع من المعرض / الملفات</span>
+            </button>
+
+            {/* Direct Rear Camera Button */}
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-400 hover:to-teal-500 text-slate-950 font-black py-3.5 px-5 rounded-2xl transition-all shadow-lg active:scale-95 text-xs flex items-center justify-center gap-2 cursor-pointer h-12"
+            >
+              <span>📸 التقاط صورة حية</span>
+            </button>
+          </div>
+
+          {/* Hidden inputs to manage files */}
           <input 
             type="file" 
             className="hidden" 
             ref={fileInputRef} 
+            onChange={handleFileChange}
+            accept="image/*"
+          />
+          <input 
+            type="file" 
+            className="hidden" 
+            ref={cameraInputRef} 
             onChange={handleFileChange}
             accept="image/*"
             capture="environment"
