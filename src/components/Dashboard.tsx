@@ -11,7 +11,7 @@ import MedicationInfoModal from './MedicationInfoModal';
 import { Medication } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { lookupMedication, getSimulatedPrescriptionMeds } from '../data/medicationDb';
-import { scanPrescriptionClient, getDrugInfoClient, getGeminiApiKey, saveGeminiApiKey, deleteGeminiApiKey } from '../utils/geminiClient';
+import { scanPrescriptionClient, getDrugInfoClient } from '../utils/geminiClient';
 
 // Define typed schema for archive folders
 interface ArchivedVisit {
@@ -141,34 +141,6 @@ export default function Dashboard() {
   const [newDosage, setNewDosage] = useState("");
   const [newForm, setNewForm] = useState("Tablet");
 
-  // API Key Settings Modal State
-  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
-  const [tempApiKey, setTempApiKey] = useState("");
-  const [hasActiveKey, setHasActiveKey] = useState(false);
-
-  React.useEffect(() => {
-    const key = getGeminiApiKey();
-    if (key) {
-      setTempApiKey(key);
-      setHasActiveKey(true);
-    } else {
-      setHasActiveKey(false);
-    }
-  }, []);
-
-  const handleSaveApiKey = () => {
-    if (tempApiKey.trim()) {
-      saveGeminiApiKey(tempApiKey);
-      setHasActiveKey(true);
-      alert("✅ تم حفظ مفتاح الذكاء الاصطناعي بنجاح!");
-      setApiKeyModalOpen(false);
-    } else {
-      deleteGeminiApiKey();
-      setHasActiveKey(false);
-      alert("ℹ️ تم مسح مفتاح الذكاء الاصطناعي. سيعمل التطبيق الآن بقاعدة البيانات المحلية المدمجة.");
-      setApiKeyModalOpen(false);
-    }
-  };
 
   // Medication Box Scanner State & Refs
   const boxScannerInputRef = React.useRef<HTMLInputElement>(null);
@@ -509,16 +481,9 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex flex-col items-center md:items-end z-10 shrink-0 gap-2">
-          <button 
-            onClick={() => setApiKeyModalOpen(true)}
-            className={`text-xs font-extrabold px-4 py-2 rounded-full border shadow-sm transition-all cursor-pointer hover:scale-105 active:scale-95 ${
-              hasActiveKey 
-                ? "bg-teal-950/30 text-teal-400 border-teal-850 hover:border-teal-400" 
-                : "bg-amber-950/30 text-amber-400 border-amber-850 hover:border-amber-400"
-            }`}
-          >
-            {hasActiveKey ? "🟢 ذكاء اصطناعي حي (اضغط للتعديل)" : "⚠️ قاعدة البيانات المحلية (اضغط لربط الذكاء الاصطناعي)"}
-          </button>
+          <span className="bg-teal-950/30 text-teal-400 text-xs font-extrabold px-3 py-1.5 rounded-full border border-teal-950 shadow-sm">
+             ⭐ مساعد صيدلي ذكي (نشط بالكامل)
+          </span>
           <span className="text-[10px] text-slate-500 font-bold bg-slate-950/60 border border-slate-800 py-1 px-3.5 rounded-full">
             مستقر وسلس • Serverless
           </span>
@@ -1015,70 +980,6 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Premium API Key Configuration Settings Modal */}
-      {apiKeyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-350" onClick={() => setApiKeyModalOpen(false)}>
-          <div 
-            className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-300 text-right font-sans" 
-            onClick={e => e.stopPropagation()}
-            dir="rtl"
-          >
-            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <span>🤖 إعدادات مفتاح الذكاء الاصطناعي</span>
-              </h3>
-              <button 
-                onClick={() => setApiKeyModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-850 rounded-full transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="py-5 space-y-4">
-              <p className="text-xs text-slate-300 leading-relaxed font-semibold">
-                يربط هذا المفتاح تطبيقك **مباشرة ومن هاتفك** بنموذج الذكاء الاصطناعي Google Gemini لمعالجة الروشتات وتصوير علب الأدوية بشكل حي وسلس.
-              </p>
-              
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 block">مفتاح API Key الخاص بـ Google Gemini:</label>
-                <input 
-                  type="password"
-                  value={tempApiKey}
-                  onChange={(e) => setTempApiKey(e.target.value)}
-                  placeholder="أدخل مفتاح الـ API هنا (مثال: AIzaSy...)"
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition-colors font-mono text-left"
-                  dir="ltr"
-                />
-              </div>
-
-              <div className="bg-slate-950/40 border border-slate-850 p-3.5 rounded-2xl space-y-2">
-                <h4 className="text-[10px] font-black text-teal-400">💡 كيف تحصل على مفتاح مجاني في ثوانٍ؟</h4>
-                <ol className="text-[10px] text-slate-400 list-decimal list-inside space-y-1 leading-relaxed font-semibold">
-                  <li>افتح موقع <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-teal-400 underline hover:text-teal-300">Google AI Studio</a> مجاناً.</li>
-                  <li>اضغط على زر **Create API Key**.</li>
-                  <li>انسخ المفتاح المتولد والصقه هنا ثم اضغط حفظ!</li>
-                </ol>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-800 flex justify-between items-center gap-3">
-              <button 
-                onClick={handleSaveApiKey}
-                className="flex-1 bg-teal-500 hover:bg-teal-600 text-slate-950 font-black text-xs py-3 rounded-2xl cursor-pointer transition-all shadow-lg shadow-teal-500/10 active:scale-95"
-              >
-                {tempApiKey.trim() ? "حفظ وتفعيل المفتاح" : "مسح واستخدام المحلي"}
-              </button>
-              <button 
-                onClick={() => setApiKeyModalOpen(false)}
-                className="px-5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs py-3 rounded-2xl cursor-pointer transition-all"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
