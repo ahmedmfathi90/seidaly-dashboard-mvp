@@ -166,7 +166,9 @@ export default function LandingPage() {
     return () => obs.disconnect();
   }, []);
 
-  const handleInstall = async () => {
+  const handleInstall = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (deferredPrompt) {
       (deferredPrompt as any).prompt();
       await (deferredPrompt as any).userChoice;

@@ -422,7 +422,7 @@ export default function QuickEditModal({ medication, isOpen, onClose, onSave, on
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between gap-3">
+        <div className="sticky bottom-0 z-10 px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           {onDelete ? (
             <button 
               type="button" 
@@ -450,7 +450,7 @@ export default function QuickEditModal({ medication, isOpen, onClose, onSave, on
               className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-sm shadow-teal-600/10 flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              حفظ التعديلات
+              حفظ وإغلاق
             </button>
           </div>
         </div>

@@ -132,9 +132,9 @@ async function startApiServer() {
       const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
       const prompt = `
-You are an expert pharmacist and clinical drug recognition AI with decades of experience in deciphering complex, handwritten medical prescriptions or analyzing commercial medicine box packaging. Your task is to accurately analyze the attached image and extract the medication details.
+You are an expert Egyptian Pharmacist and clinical drug recognition AI. Your task is to accurately analyze the attached image and extract the medication details.
 
-Use the provided Medical Specialty (${medicalSpecialty || 'General'}) to decode illegible handwriting. If a word is ambiguous, restrict your guesses to medications commonly prescribed by this specific specialty. You are perfectly capable of reading English drug names mixed with Arabic (RTL) dosage instructions.
+Use the provided Medical Specialty (${medicalSpecialty || 'General'}) to decode illegible handwriting. You are perfectly capable of reading English drug names mixed with Arabic (RTL) dosage instructions.
 
 Extract the information into a strict JSON array of objects. Each object must represent one medication and strictly follow this schema:
 - "name": The commercial/brand drug name (string, e.g. "Augmentin").
@@ -144,13 +144,12 @@ Extract the information into a strict JSON array of objects. Each object must re
 - "duration": Length of treatment (string, in Arabic, e.g., "٧ أيام").
 - "specialInstructions": Any extra instructions or notes (string, in Arabic, e.g., "يؤخذ بعد الأكل").
 - "detailedInfo": An object containing factual clinical information about the drug in Arabic:
-  - "indications": Array of strings representing why this drug is used/prescribed (in Arabic, e.g., ["علاج الالتهابات البكتيرية", "علاج التهاب اللوزتين"]).
-  - "sideEffects": Array of strings representing common side effects of the drug (in Arabic, e.g., ["غثيان خفيف", "إسهال مؤقت"]).
-  - "contraindications": Array of strings representing situations where this drug is contraindicated (in Arabic, e.g., ["حساسية البنسلين"]).
+  - "indications": Array of strings representing why this drug is used/prescribed (in Arabic).
+  - "sideEffects": Array of strings representing common side effects of the drug (in Arabic).
+  - "contraindications": Array of strings representing situations where this drug is contraindicated (in Arabic).
 
-Crucial Rules:
-1. NEVER return "Unknown" or "دواء غير معروف" if you can infer the drug from any visible letters, active ingredients, colors, or shape. Use your vast global clinical database to match the drug.
-2. Output ONLY a valid JSON array. No markdown formatting, no explanations.
+CRUCIAL RULE: NEVER output "Unknown" or "دواء غير معروف" for the medicationName. If the handwriting is difficult, you MUST use the provided Medical Specialty, the identified active ingredient, and the medical use to deduce and guess the closest Commercial Drug Name available in the Egyptian market. Always provide a specific commercial name.
+Output ONLY a valid JSON array. No markdown formatting, no explanations.
       `;
 
       let response;
