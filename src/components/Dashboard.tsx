@@ -464,6 +464,16 @@ export default function Dashboard() {
               <UploadCloud className="w-5 h-5 text-slate-400" />
               <span>اختيار من استوديو الصور / الملفات</span>
             </button>
+
+            {/* Hidden inputs to capture physical medication boxes directly from the camera inside the active view */}
+            <input 
+              type="file" 
+              ref={boxScannerInputRef} 
+              accept="image/*" 
+              capture="environment" 
+              className="hidden" 
+              onChange={handleBoxScanSelected} 
+            />
           </div>
         </div>
       </div>
