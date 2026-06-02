@@ -1068,6 +1068,8 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
       {/* Medication factual information bottom sheet for physical box scanning */}
       {scannedBoxInfo && (
         <MedicationInfoModal 
