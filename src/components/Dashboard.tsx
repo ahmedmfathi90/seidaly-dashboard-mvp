@@ -416,24 +416,14 @@ export default function Dashboard() {
             <p className="text-slate-400 text-xs font-medium">التقط صورة لعلبة الدواء ليتعرف عليها الذكاء الاصطناعي ويجلب لك تفاصيلها فوراً</p>
           </div>
 
-          {/* Glowing Target Scanner Overlay */}
-          <div className="relative w-full max-w-[280px] aspect-square mx-auto bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center shadow-inner group">
-            {/* 4 Glowing Corner Angles */}
-            <div className="absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-teal-400 rounded-tl"></div>
-            <div className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-teal-400 rounded-tr"></div>
-            <div className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-teal-400 rounded-bl"></div>
-            <div className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-teal-400 rounded-br"></div>
-            
-            {/* Green laser scan line */}
-            <div className="scanner-laser-line"></div>
-            
-            <div className="text-center p-4 space-y-3 z-10">
-              <Camera className="w-10 h-10 text-teal-400/60 mx-auto animate-pulse" />
-              <span className="text-[10px] font-bold text-slate-400 block max-w-[200px] leading-relaxed mx-auto">
-                ضع علبة الدواء داخل هذا المربع المضيء ليقرأها الذكاء الاصطناعي بدقة
-              </span>
+          {/* Scan Status Loader */}
+          {isBoxScanning && (
+            <div className="flex flex-col items-center justify-center p-8 bg-slate-950/40 border border-slate-800 rounded-2xl max-w-sm mx-auto mb-6 animate-pulse">
+              <Loader2 className="w-10 h-10 text-teal-400 animate-spin mb-3" />
+              <p className="text-sm font-bold text-teal-300">جاري فحص العلبة بالذكاء الاصطناعي...</p>
+              <p className="text-[10px] text-slate-400 mt-1 font-medium">يرجى إبقاء هاتفك ثابتاً أثناء التحليل</p>
             </div>
-          </div>
+          )}
 
           <div className="mt-8 space-y-4 max-w-sm mx-auto">
             {/* Massive Touch-Friendly Buttons */}
@@ -796,7 +786,12 @@ export default function Dashboard() {
         </button>
 
         <button 
-          onClick={() => setBoxScannerViewOpen(true)}
+          onClick={() => {
+            setBoxScannerViewOpen(true);
+            setTimeout(() => {
+              boxScannerInputRef.current?.click();
+            }, 100);
+          }}
           className="group bg-slate-900/60 backdrop-blur-md rounded-3xl p-6 text-slate-100 border border-slate-800 shadow-lg hover:shadow-xl transition-all text-right flex flex-col justify-between min-h-[150px] cursor-pointer hover:scale-[1.02]"
         >
           <div className="bg-slate-950/40 p-3 rounded-2xl w-fit self-end text-teal-400 group-hover:scale-110 transition-transform border border-slate-800">
