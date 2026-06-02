@@ -1,0 +1,74 @@
+import React from 'react';
+import { Pill, Activity, Home, User, LogOut } from 'lucide-react';
+import Dashboard from './components/Dashboard';
+import Login from './components/Login';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+function AppContent() {
+  const { userName, isLoggedIn, setIsLoggedIn } = useAuth();
+
+  if (!isLoggedIn) {
+    return <Login />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-tr from-slate-950 via-teal-950 to-slate-900 text-slate-100 font-sans selection:bg-teal-500 selection:text-slate-950 animate-in fade-in duration-300 relative overflow-hidden" dir="ltr">
+      {/* Interactive Glowing Ambient Background Blurs */}
+      <div className="absolute top-10 left-10 w-[400px] h-[400px] bg-teal-500/5 rounded-full blur-[130px] animate-pulse pointer-events-none"></div>
+      <div className="absolute bottom-20 right-10 w-[450px] h-[450px] bg-indigo-500/5 rounded-full blur-[130px] animate-pulse pointer-events-none"></div>
+
+      {/* Header */}
+      <header className="bg-slate-950/40 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-20 transition-all shadow-lg">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-teal-500/10 border border-teal-500/20 p-2 rounded-xl text-teal-400 shadow-sm">
+              <Activity className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black bg-gradient-to-r from-teal-400 via-teal-200 to-indigo-400 bg-clip-text text-transparent">
+                صيدلي <span className="font-medium text-slate-500 text-xs ml-1 mobile:hidden">/ Seidaly</span>
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 bg-slate-950/40 py-1.5 px-3 rounded-xl border border-slate-800">
+               <User className="w-4 h-4 text-teal-400 fill-teal-400/10" />
+               <span>{userName}</span>
+             </div>
+             
+             {/* Logout / Switch Name Button */}
+             <button 
+               onClick={() => setIsLoggedIn(false)}
+               className="flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-950/20 hover:bg-rose-950/40 py-1.5 px-3 rounded-xl border border-rose-950/60 cursor-pointer transition-all hover:scale-105"
+               title="تسجيل خروج / تغيير الحساب"
+             >
+               <LogOut className="w-3.5 h-3.5" />
+               <span className="hidden sm:inline">تغيير الحساب</span>
+             </button>
+
+             <div className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-teal-400 bg-teal-950/30 px-3 py-1.5 rounded-full border border-teal-950">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                </span>
+                AI Core Online
+             </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 pb-24 relative z-10">
+        <Dashboard />
+      </main>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}

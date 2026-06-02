@@ -1,0 +1,88 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+}
+
+model User {
+  id                   String           @id @default(uuid())
+  email                String           @unique
+  passwordHash         String           // Replace with OAuth identifiers if using social login
+  name                 String?
+  createdAt            DateTime         @default(now())
+  
+  // ======== Freemium Logic ========
+  subscriptionTier     SubscriptionTier @default(FREE)
+  subscriptionExpiry   DateTime?        // Evaluated if tier is PREMIUM
+  freeScansRemaining   Int              @default(3) // 3 complimentary scans for Free users
+
+  // ======== Gamification ========
+  points               Int              @default(0)
+  adherenceStreak      Int              @default(0)
+  
+  folders              PrescriptionFolder[]
+  medications          Medication[]
+  reminders            Reminder[]
+}
+
+model PrescriptionFolder {
+  id            String       @id @default(uuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  
+  doctorName    String?
+  specialty     String?
+  visitDate     DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+  
+  medications   Medication[]
+}
+
+model Medication {
+  id                     String              @id @default(uuid())
+  folderId               String?
+  folder                 PrescriptionFolder? @relation(fields: [folderId], references: [id])
+  userId                 String
+  user                   User                @relation(fields: [userId], references: [id])
+  
+  name                   String
+  dosage                 String?
+  form                   String?
+  frequency              String?
+  duration               String?
+  specialInstructions    String?
+  
+  // ======== Visual Verification ========
+  medicineBoxImageUrl    String?   // URL to visual packaging image
+  
+  // ======== Stock Tracking ========
+  stockRemaining         Int?      // Pill counter
+  
+  createdAt              DateTime  @default(now())
+  
+  reminders              Reminder[]
+}
+
+model Reminder {
+  id            String     @id @default(uuid())
+  medicationId  String
+  medication    Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  
+  triggerTime   DateTime   // Exact time for the alarm
+  isActive      Boolean    @default(true)
+  taken         Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+}
+

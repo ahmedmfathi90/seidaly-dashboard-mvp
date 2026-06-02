@@ -1,0 +1,6 @@
+{
+  "name": "Seidaly Dashboard MVP",
+  "description": "AI Prescription Scanner prototype for Seidaly.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
