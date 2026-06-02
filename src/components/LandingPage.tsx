@@ -169,6 +169,9 @@ export default function LandingPage() {
     return () => obs.disconnect();
   }, []);
 
+  const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [showFallbackGuide, setShowFallbackGuide] = useState(false);
+
   const handleInstall = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -181,9 +184,9 @@ export default function LandingPage() {
       await installPrompt.userChoice;
       setInstallPrompt(null);
     } else if (isIOS) {
-      alert("للتثبيت على آيفون:\n1. اضغط على أيقونة المشاركة (Share) في الأسفل.\n2. اختر (Add to Home Screen) أو (إضافة للشاشة الرئيسية).");
+      setShowIOSGuide(true);
     } else {
-      alert('عفواً، متصفحك لا يدعم التثبيت المباشر، يرجى التثبيت من قائمة المتصفح بالضغط على "Add to Home screen".');
+      setShowFallbackGuide(true);
     }
   };
 
@@ -450,6 +453,136 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
+      <IOSInstallGuide isOpen={showIOSGuide} onClose={() => setShowIOSGuide(false)} />
+      <FallbackInstallGuide isOpen={showFallbackGuide} onClose={() => setShowFallbackGuide(false)} />
     </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ *  CUSTOM PWA INSTALL GUIDES (IOS & FALLBACK)
+ * ────────────────────────────────────────────────────────────────── */
+
+interface IOSInstallGuideProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function IOSInstallGuide({ isOpen, onClose }: IOSInstallGuideProps) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          {/* Backdrop click to close */}
+          <div className="absolute inset-0" onClick={onClose} />
+          
+          <motion.div
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl relative z-10 text-right text-white"
+            dir="rtl"
+          >
+            {/* Top Indicator bar for mobile drag feeling */}
+            <div className="w-12 h-1 bg-slate-800 rounded-full mx-auto mb-6" />
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-teal-500/10 p-2.5 rounded-xl text-teal-400">
+                <Zap className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">تثبيت تطبيق صيدلي على آيفون</h3>
+                <p className="text-xs text-slate-400 mt-0.5">خطوات بسيطة للحصول على تجربة التطبيق الكاملة</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 my-6">
+              <div className="flex items-center gap-4 bg-slate-950/45 p-4 rounded-2xl border border-slate-800/60">
+                <div className="bg-slate-800 p-2.5 rounded-xl text-slate-200 shrink-0">
+                  {/* Apple Share Icon */}
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                </div>
+                <div className="text-xs font-bold text-slate-300">
+                  1. اضغط على زر المشاركة (Share) في شريط متصفح Safari بالأسفل.
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 bg-slate-950/45 p-4 rounded-2xl border border-slate-800/60">
+                <div className="bg-slate-800 p-2.5 rounded-xl text-slate-200 shrink-0">
+                  {/* Add to Home Screen Icon */}
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <div className="text-xs font-bold text-slate-300">
+                  2. اختر إضافة إلى الشاشة الرئيسية (Add to Home Screen).
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl transition-colors text-sm cursor-pointer"
+            >
+              إغلاق
+            </button>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+interface FallbackInstallGuideProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function FallbackInstallGuide({ isOpen, onClose }: FallbackInstallGuideProps) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="absolute inset-0" onClick={onClose} />
+          
+          <motion.div
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl relative z-10 text-right text-white"
+            dir="rtl"
+          >
+            <div className="w-12 h-1 bg-slate-800 rounded-full mx-auto mb-6" />
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-amber-500/10 p-2.5 rounded-xl text-amber-400">
+                <Zap className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">تثبيت تطبيق صيدلي</h3>
+                <p className="text-xs text-slate-400 mt-0.5">طريقة التثبيت لمتصفحك الحالي</p>
+              </div>
+            </div>
+
+            <p className="text-slate-300 text-xs leading-relaxed my-6 font-medium">
+              عفواً، متصفحك الحالي لا يدعم التثبيت المباشر بنقرة زر. لتثبيت التطبيق:
+              <br />
+              <span className="text-teal-400 block mt-2">1. افتح خيارات المتصفح (المزيد / الثلاث نقاط).</span>
+              <span className="text-teal-400 block">2. اضغط على خيار "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية".</span>
+            </p>
+
+            <button
+              onClick={onClose}
+              className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl transition-colors text-sm cursor-pointer"
+            >
+              إغلاق
+            </button>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

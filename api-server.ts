@@ -148,7 +148,7 @@ Extract the information into a strict JSON array of objects. Each object must re
   - "sideEffects": Array of strings representing common side effects of the drug (in Arabic).
   - "contraindications": Array of strings representing situations where this drug is contraindicated (in Arabic).
 
-CRUCIAL RULE: NEVER output "Unknown" or "دواء غير معروف" for the medicationName. If the handwriting is difficult, you MUST use the provided Medical Specialty, the identified active ingredient, and the medical use to deduce and guess the closest Commercial Drug Name available in the Egyptian market. Always provide a specific commercial name.
+CRUCIAL RULE: You are an expert Egyptian Pharmacist. You are strictly FORBIDDEN from using the words 'unknown', 'غير معروف', or leaving the medicationName blank. If the handwriting is illegible, you MUST intelligently GUESS the most likely commercial drug name available in Egypt based entirely on the provided Medical Specialty and the context of the other legible words (like dosage or instructions). A highly educated guess is mandatory. Never fail to provide a specific drug name.
 Output ONLY a valid JSON array. No markdown formatting, no explanations.
       `;
 

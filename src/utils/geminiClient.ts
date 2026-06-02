@@ -91,10 +91,8 @@ Extract the information into a strict JSON array of objects. Each object must re
   - "sideEffects": Array of strings representing common side effects of the drug (in Arabic).
   - "contraindications": Array of strings representing situations where this drug is contraindicated (in Arabic).
 
-Rules:
-1. If a field from the prescription is unreadable, use your clinical knowledge to infer the most accurate information based on the drug name.
-2. For "activeIngredient" and "medicalUse", you MUST use your internal medical knowledge to fill them based on the recognized drug name.
-3. Output ONLY a valid JSON array. No markdown formatting, no explanations, no text outside the JSON array.
+CRUCIAL RULE: You are an expert Egyptian Pharmacist. You are strictly FORBIDDEN from using the words 'unknown', 'غير معروف', or leaving the medicationName blank. If the handwriting is illegible, you MUST intelligently GUESS the most likely commercial drug name available in Egypt based entirely on the provided Medical Specialty and the context of the other legible words (like dosage or instructions). A highly educated guess is mandatory. Never fail to provide a specific drug name.
+Output ONLY a valid JSON array. No markdown formatting, no explanations, no text outside the JSON array.
   `;
 
   try {
