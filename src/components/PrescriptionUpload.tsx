@@ -26,15 +26,45 @@ const specialties = [
   "الأورام"
 ];
 
-function fileToBase64(file: File): Promise<{ base64Data: string, mimeType: string }> {
+function compressImage(file: File): Promise<{ base64Data: string, mimeType: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64Data = result.split(',')[1] || result;
-      resolve({ base64Data, mimeType: file.type });
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1500;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas 2D context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const base64Data = dataUrl.split(',')[1] || dataUrl;
+        resolve({ base64Data, mimeType: 'image/jpeg' });
+      };
+      img.onerror = (err) => reject(err);
+      img.src = e.target?.result as string;
     };
-    reader.onerror = error => reject(error);
+    reader.onerror = (err) => reject(err);
     reader.readAsDataURL(file);
   });
 }
@@ -77,8 +107,8 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
     setError(null);
 
     try {
-      // Keep maximum resolution for OCR precision (no aggressive canvas downscaling)
-      const { base64Data, mimeType } = await fileToBase64(file);
+      // Compress native high-resolution image to ~300KB before API transmission
+      const { base64Data, mimeType } = await compressImage(file);
 
       // Call our client-side Serverless Gemini API Client
       const medicationsWithIds = await scanPrescriptionClient(base64Data, mimeType, medicalSpecialty);
