@@ -23,10 +23,27 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [userName, setUserName] = useState('');
-  const [userAge, setUserAge] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [hasSeenLanding, setHasSeenLanding] = useState(false);
+  const [userName, setUserName] = useState(() => localStorage.getItem('seidaly_userName') || '');
+  const [userAge, setUserAge] = useState(() => localStorage.getItem('seidaly_userAge') || '');
+  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('seidaly_isLoggedIn') === 'true');
+  const [hasSeenLanding, setHasSeenLanding] = useState(() => localStorage.getItem('seidaly_hasSeenLanding') === 'true');
+
+  // Sync state to localStorage whenever it changes
+  React.useEffect(() => {
+    localStorage.setItem('seidaly_userName', userName);
+  }, [userName]);
+
+  React.useEffect(() => {
+    localStorage.setItem('seidaly_userAge', userAge);
+  }, [userAge]);
+
+  React.useEffect(() => {
+    localStorage.setItem('seidaly_isLoggedIn', isLoggedIn.toString());
+  }, [isLoggedIn]);
+
+  React.useEffect(() => {
+    localStorage.setItem('seidaly_hasSeenLanding', hasSeenLanding.toString());
+  }, [hasSeenLanding]);
 
   return (
     <AuthContext.Provider value={{ 

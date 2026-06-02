@@ -74,21 +74,6 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">التخصص الطبي (اختياري)</label>
-            <select
-              className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3.5 text-white focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 outline-none transition-all text-base font-semibold text-right appearance-none"
-              defaultValue=""
-            >
-              <option value="" disabled className="text-slate-500">اختر التخصص الطبي...</option>
-              <option value="general">طب عام</option>
-              <option value="pediatrics">طب أطفال</option>
-              <option value="cardiology">قلب وأوعية دموية</option>
-              <option value="derma">جلدية</option>
-              <option value="other">أخرى</option>
-            </select>
-          </div>
-
-          <div>
             <label className="block text-xs font-bold text-slate-400 mb-2.5 uppercase tracking-wider">اختر رمزك التعبيري (الأفاتار)</label>
             <div className="flex flex-wrap gap-2 justify-center">
               {avatars.map((av) => (
