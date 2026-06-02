@@ -2,12 +2,46 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
     <title>صيدلي - Seidaly | مساعدك الدوائي الذكي</title>
+    <style>
+      /* Force disable zoom at the root level */
+      html, body {
+        touch-action: pan-x pan-y;
+        -webkit-text-size-adjust: 100%;
+      }
+    </style>
   </head>
   <body class="touch-manipulation">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // 1. Prevent Pinch-to-Zoom (iOS Safari & Chrome)
+      document.addEventListener('gesturestart', function(e) {
+        e.preventDefault();
+        document.body.style.zoom = 1;
+      });
+
+      document.addEventListener('gesturechange', function(e) {
+        e.preventDefault();
+        document.body.style.zoom = 1;
+      });
+
+      document.addEventListener('gestureend', function(e) {
+        e.preventDefault();
+        document.body.style.zoom = 1;
+      });
+
+      // 2. Prevent Double-Tap to Zoom (Fallback for older browsers)
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', function(event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, { passive: false });
+    </script>
   </body>
 </html>
 
