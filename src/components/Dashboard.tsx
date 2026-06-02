@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import PrescriptionUpload from './PrescriptionUpload';
 import MedicationList from './MedicationList';
+import MedicationInfoModal from './MedicationInfoModal';
 import { Medication } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { lookupMedication, getSimulatedPrescriptionMeds } from '../data/medicationDb';
@@ -142,11 +143,13 @@ export default function Dashboard() {
   // Medication Box Scanner State & Refs
   const boxScannerInputRef = React.useRef<HTMLInputElement>(null);
   const [isBoxScanning, setIsBoxScanning] = useState(false);
+  const [scannedBoxInfo, setScannedBoxInfo] = useState<Medication | null>(null);
 
   const handleBoxScanSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setIsBoxScanning(true);
+      setScannedBoxInfo(null);
 
       try {
         const base64Data = await new Promise<string>((resolve, reject) => {
@@ -213,8 +216,8 @@ export default function Dashboard() {
         }
 
         if (medicationsWithIds.length > 0) {
-          setMedications(prev => [...prev, ...medicationsWithIds]);
-          alert("✅ تم التعرف على علبة الدواء وإضافتها بنجاح إلى جدولك الطبي!");
+          // Open the information sheet popups directly without saving to active timeline schedule!
+          setScannedBoxInfo(medicationsWithIds[0]);
         } else {
           alert("⚠️ لم يتم التعرف على علبة الدواء. يرجى تصويرها بوضوح تحت إضاءة جيدة.");
         }
@@ -1065,6 +1068,12 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      {/* Medication factual information bottom sheet for physical box scanning */}
+      {scannedBoxInfo && (
+        <MedicationInfoModal 
+          medication={scannedBoxInfo} 
+          onClose={() => setScannedBoxInfo(null)} 
+        />
       )}
 
     </div>
