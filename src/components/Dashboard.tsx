@@ -11,6 +11,7 @@ import MedicationInfoModal from './MedicationInfoModal';
 import { Medication } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { lookupMedication, getSimulatedPrescriptionMeds } from '../data/medicationDb';
+import { scanPrescriptionClient, getDrugInfoClient, getGeminiApiKey, saveGeminiApiKey, deleteGeminiApiKey } from '../utils/geminiClient';
 
 // Define typed schema for archive folders
 interface ArchivedVisit {
@@ -140,6 +141,35 @@ export default function Dashboard() {
   const [newDosage, setNewDosage] = useState("");
   const [newForm, setNewForm] = useState("Tablet");
 
+  // API Key Settings Modal State
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState("");
+  const [hasActiveKey, setHasActiveKey] = useState(false);
+
+  React.useEffect(() => {
+    const key = getGeminiApiKey();
+    if (key) {
+      setTempApiKey(key);
+      setHasActiveKey(true);
+    } else {
+      setHasActiveKey(false);
+    }
+  }, []);
+
+  const handleSaveApiKey = () => {
+    if (tempApiKey.trim()) {
+      saveGeminiApiKey(tempApiKey);
+      setHasActiveKey(true);
+      alert("✅ تم حفظ مفتاح الذكاء الاصطناعي بنجاح!");
+      setApiKeyModalOpen(false);
+    } else {
+      deleteGeminiApiKey();
+      setHasActiveKey(false);
+      alert("ℹ️ تم مسح مفتاح الذكاء الاصطناعي. سيعمل التطبيق الآن بقاعدة البيانات المحلية المدمجة.");
+      setApiKeyModalOpen(false);
+    }
+  };
+
   // Medication Box Scanner State & Refs
   const boxScannerInputRef = React.useRef<HTMLInputElement>(null);
   const [isBoxScanning, setIsBoxScanning] = useState(false);
@@ -163,57 +193,8 @@ export default function Dashboard() {
           reader.readAsDataURL(file);
         });
 
-        let medicationsWithIds: Medication[] = [];
-
-        try {
-          const response = await fetch('/api/scan-prescription', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              imageBase64: base64Data,
-              mimeType: file.type,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.medications && data.medications.length > 0) {
-              medicationsWithIds = data.medications.map((m: any) => ({
-                ...m,
-                id: m.id || "med-box-" + Math.random().toString(36).substring(7),
-                timings: ["09:00 AM"],
-                inventoryQty: 30
-              }));
-            }
-          }
-        } catch (apiErr) {
-          console.warn("⚠️ API scan failed or unreachable, performing database fallback:", apiErr);
-        }
-
-        if (medicationsWithIds.length === 0) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          const simMeds = getSimulatedPrescriptionMeds();
-          const firstMed = simMeds[Math.floor(Math.random() * simMeds.length)];
-          if (firstMed) {
-            medicationsWithIds = [{
-              id: "med-box-" + Math.random().toString(36).substring(7),
-              name: `${firstMed.nameAr} (${firstMed.name})`,
-              medicationName: `${firstMed.nameAr} (${firstMed.name})`,
-              dosage: firstMed.dosage,
-              form: firstMed.form,
-              frequency: firstMed.frequency,
-              duration: firstMed.duration,
-              specialInstructions: firstMed.specialInstructions,
-              activeIngredient: firstMed.activeIngredient,
-              medicalUse: firstMed.medicalUse,
-              detailedInfo: firstMed.detailedInfo,
-              timings: ["09:00 AM"],
-              inventoryQty: 30
-            }];
-          }
-        }
+        // Call our client-side Serverless Gemini API Client!
+        const medicationsWithIds = await scanPrescriptionClient(base64Data, file.type);
 
         if (medicationsWithIds.length > 0) {
           // Open the information sheet popups directly without saving to active timeline schedule!
@@ -308,68 +289,17 @@ export default function Dashboard() {
   const handleManualAddSave = async () => {
     if (!newName.trim()) return;
 
-    let enrichedMed: Medication | null = null;
+    let enrichedMed: Medication = await getDrugInfoClient(newName);
 
-    try {
-      const response = await fetch(`/api/get-drug-info?name=${encodeURIComponent(newName)}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.medication) {
-          enrichedMed = {
-            ...data.medication,
-            id: "med-manual-" + Math.random().toString(36).substring(7),
-            dosage: newDosage.trim() ? newDosage : data.medication.dosage,
-            form: newForm || data.medication.form,
-            timings: ["09:00 AM"],
-            inventoryQty: 30
-          };
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to get dynamic drug details, applying database fallback:", e);
-    }
-
-    // Client-side fallback if Express API failed or returned empty
-    if (!enrichedMed) {
-      const dbRecord = lookupMedication(newName);
-      if (dbRecord) {
-        enrichedMed = {
-          id: "med-manual-" + Math.random().toString(36).substring(7),
-          name: `${dbRecord.nameAr} (${dbRecord.name})`,
-          medicationName: `${dbRecord.nameAr} (${dbRecord.name})`,
-          dosage: newDosage.trim() ? newDosage : dbRecord.dosage,
-          form: newForm || dbRecord.form,
-          frequency: dbRecord.frequency,
-          duration: dbRecord.duration,
-          specialInstructions: dbRecord.specialInstructions,
-          activeIngredient: dbRecord.activeIngredient,
-          medicalUse: dbRecord.medicalUse,
-          detailedInfo: dbRecord.detailedInfo,
-          timings: ["09:00 AM"],
-          inventoryQty: 30
-        };
-      } else {
-        enrichedMed = {
-          id: "med-manual-" + Math.random().toString(36).substring(7),
-          name: newName,
-          medicationName: newName,
-          dosage: newDosage || "غير محدد",
-          form: newForm || "Tablet",
-          frequency: "مرة واحدة يومياً (كل 24 ساعة)",
-          duration: "7 أيام",
-          specialInstructions: "بعد الأكل",
-          activeIngredient: "غير محدد",
-          medicalUse: "دواء طبي - استشر الصيدلي",
-          detailedInfo: {
-            indications: [`علاج الأعراض الموصوفة لـ ${newName}`],
-            sideEffects: ["راجع النشرة الداخلية للدواء"],
-            contraindications: ["الحساسية للمادة الفعالة بالدواء"]
-          },
-          timings: ["09:00 AM"],
-          inventoryQty: 30
-        };
-      }
-    }
+    // Override with custom dosage or form if the user manually entered them in the form
+    enrichedMed = {
+      ...enrichedMed,
+      id: "med-manual-" + Math.random().toString(36).substring(7),
+      dosage: newDosage.trim() ? newDosage : enrichedMed.dosage,
+      form: newForm || enrichedMed.form,
+      timings: ["09:00 AM"],
+      inventoryQty: 30
+    };
 
     setMedications(prev => [...prev, enrichedMed!]);
     setNewName("");
@@ -579,11 +509,18 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex flex-col items-center md:items-end z-10 shrink-0 gap-2">
-          <span className="bg-teal-950/30 text-teal-400 text-xs font-extrabold px-3 py-1.5 rounded-full border border-teal-950 shadow-sm">
-             ⭐ باقة Free Tier النشطة ومجانية بالكامل
-          </span>
+          <button 
+            onClick={() => setApiKeyModalOpen(true)}
+            className={`text-xs font-extrabold px-4 py-2 rounded-full border shadow-sm transition-all cursor-pointer hover:scale-105 active:scale-95 ${
+              hasActiveKey 
+                ? "bg-teal-950/30 text-teal-400 border-teal-850 hover:border-teal-400" 
+                : "bg-amber-950/30 text-amber-400 border-amber-850 hover:border-amber-400"
+            }`}
+          >
+            {hasActiveKey ? "🟢 ذكاء اصطناعي حي (اضغط للتعديل)" : "⚠️ قاعدة البيانات المحلية (اضغط لربط الذكاء الاصطناعي)"}
+          </button>
           <span className="text-[10px] text-slate-500 font-bold bg-slate-950/60 border border-slate-800 py-1 px-3.5 rounded-full">
-            مستقر وسلس
+            مستقر وسلس • Serverless
           </span>
         </div>
       </div>
@@ -1076,6 +1013,71 @@ export default function Dashboard() {
           medication={scannedBoxInfo} 
           onClose={() => setScannedBoxInfo(null)} 
         />
+      )}
+
+      {/* Premium API Key Configuration Settings Modal */}
+      {apiKeyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-350" onClick={() => setApiKeyModalOpen(false)}>
+          <div 
+            className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-300 text-right font-sans" 
+            onClick={e => e.stopPropagation()}
+            dir="rtl"
+          >
+            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <span>🤖 إعدادات مفتاح الذكاء الاصطناعي</span>
+              </h3>
+              <button 
+                onClick={() => setApiKeyModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-850 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="py-5 space-y-4">
+              <p className="text-xs text-slate-300 leading-relaxed font-semibold">
+                يربط هذا المفتاح تطبيقك **مباشرة ومن هاتفك** بنموذج الذكاء الاصطناعي Google Gemini لمعالجة الروشتات وتصوير علب الأدوية بشكل حي وسلس.
+              </p>
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 block">مفتاح API Key الخاص بـ Google Gemini:</label>
+                <input 
+                  type="password"
+                  value={tempApiKey}
+                  onChange={(e) => setTempApiKey(e.target.value)}
+                  placeholder="أدخل مفتاح الـ API هنا (مثال: AIzaSy...)"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition-colors font-mono text-left"
+                  dir="ltr"
+                />
+              </div>
+
+              <div className="bg-slate-950/40 border border-slate-850 p-3.5 rounded-2xl space-y-2">
+                <h4 className="text-[10px] font-black text-teal-400">💡 كيف تحصل على مفتاح مجاني في ثوانٍ؟</h4>
+                <ol className="text-[10px] text-slate-400 list-decimal list-inside space-y-1 leading-relaxed font-semibold">
+                  <li>افتح موقع <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-teal-400 underline hover:text-teal-300">Google AI Studio</a> مجاناً.</li>
+                  <li>اضغط على زر **Create API Key**.</li>
+                  <li>انسخ المفتاح المتولد والصقه هنا ثم اضغط حفظ!</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 flex justify-between items-center gap-3">
+              <button 
+                onClick={handleSaveApiKey}
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-slate-950 font-black text-xs py-3 rounded-2xl cursor-pointer transition-all shadow-lg shadow-teal-500/10 active:scale-95"
+              >
+                {tempApiKey.trim() ? "حفظ وتفعيل المفتاح" : "مسح واستخدام المحلي"}
+              </button>
+              <button 
+                onClick={() => setApiKeyModalOpen(false)}
+                className="px-5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs py-3 rounded-2xl cursor-pointer transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

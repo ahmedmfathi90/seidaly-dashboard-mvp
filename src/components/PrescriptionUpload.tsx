@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { UploadCloud, FileImage, Loader2, X, AlertCircle } from 'lucide-react';
 import { Medication, ScanResponse } from '../types';
 import { getSimulatedPrescriptionMeds } from '../data/medicationDb';
+import { scanPrescriptionClient } from '../utils/geminiClient';
 
 interface PrescriptionUploadProps {
   onScanComplete: (medications: Medication[]) => void;
@@ -49,7 +50,6 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
-          // Extract base64 part
           const base64Str = result.split(',')[1] || result;
           resolve(base64Str);
         };
@@ -57,51 +57,8 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
         reader.readAsDataURL(file);
       });
 
-      let medicationsWithIds: Medication[] = [];
-
-      try {
-        const response = await fetch('/api/scan-prescription', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            imageBase64: base64Data,
-            mimeType: file.type,
-          }),
-        });
-
-        if (response.ok) {
-          const data: ScanResponse = await response.json();
-          if (data.medications && data.medications.length > 0) {
-            medicationsWithIds = data.medications.map(m => ({
-              ...m,
-              id: m.id || Math.random().toString(36).substring(7)
-            }));
-          }
-        }
-      } catch (apiErr) {
-        console.warn("⚠️ API scan failed or unreachable, performing high-fidelity local database fallback:", apiErr);
-      }
-
-      // If the API call failed or is offline (e.g. running standalone on GitHub Pages)
-      if (medicationsWithIds.length === 0) {
-        // Wait 1.5 seconds to show premium loading spinner
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const simMeds = getSimulatedPrescriptionMeds();
-        medicationsWithIds = simMeds.map(rec => ({
-          id: "med-" + Math.random().toString(36).substring(7),
-          name: `${rec.nameAr} (${rec.name})`,
-          dosage: rec.dosage,
-          form: rec.form,
-          frequency: rec.frequency,
-          duration: rec.duration,
-          specialInstructions: rec.specialInstructions,
-          activeIngredient: rec.activeIngredient,
-          medicalUse: rec.medicalUse,
-          detailedInfo: rec.detailedInfo
-        }));
-      }
+      // Call our client-side Serverless Gemini API Client!
+      const medicationsWithIds = await scanPrescriptionClient(base64Data, file.type);
 
       onScanComplete(medicationsWithIds);
 
