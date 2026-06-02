@@ -3,19 +3,22 @@ import { useAuth } from '../context/AuthContext';
 import { Pill, Activity, ArrowRightLeft, ShieldCheck, HeartPulse } from 'lucide-react';
 
 export default function Login() {
-  const { userName, setUserName, setIsLoggedIn } = useAuth();
+  const { userName, setUserName, userAge, setUserAge, setIsLoggedIn, setHasSeenLanding } = useAuth();
   const [nameInput, setNameInput] = useState(userName);
+  const [ageInput, setAgeInput] = useState(userAge);
   const [avatar, setAvatar] = useState('👨‍⚕️');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nameInput.trim()) return;
+    if (!nameInput.trim() || !ageInput.trim()) return;
 
     setIsSubmitting(true);
     setTimeout(() => {
       setUserName(nameInput);
+      setUserAge(ageInput);
       setIsLoggedIn(true);
+      setHasSeenLanding(true);
       setIsSubmitting(false);
     }, 800); // Premium delay feeling
   };
@@ -52,6 +55,20 @@ export default function Login() {
               onChange={(e) => setNameInput(e.target.value)}
               placeholder="مثال: أحمد فتحي"
               required
+              className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3.5 text-white placeholder-slate-600 focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 outline-none transition-all text-sm font-semibold text-right"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">العمر</label>
+            <input 
+              type="number" 
+              value={ageInput}
+              onChange={(e) => setAgeInput(e.target.value)}
+              placeholder="مثال: 30"
+              required
+              min="1"
+              max="120"
               className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3.5 text-white placeholder-slate-600 focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 outline-none transition-all text-sm font-semibold text-right"
             />
           </div>

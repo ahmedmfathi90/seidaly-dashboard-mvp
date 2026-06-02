@@ -25,25 +25,25 @@ interface ArchivedVisit {
 interface FamilyMember {
   id: string;
   name: string;
+  age: string;
   relation: string;
   avatar: string;
 }
 
 export default function Dashboard() {
-  const { userName } = useAuth();
+  const { userName, userAge } = useAuth();
   const [streak, setStreak] = useState(5);
   const [scanOpen, setScanOpen] = useState(false);
 
   // --- Family Members Profile State ---
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
-    { id: "me", name: userName, relation: "أنا", avatar: "👨‍⚕️" },
-    { id: "father", name: "الوالد (الأب)", relation: "الأب", avatar: "👴" },
-    { id: "mother", name: "الوالدة (الأم)", relation: "الأم", avatar: "👵" }
+    { id: "me", name: userName, age: userAge || "30", relation: "أنا", avatar: "👨‍⚕️" }
   ]);
 
   const [activeMemberId, setActiveMemberId] = useState<string>("me");
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberAge, setNewMemberAge] = useState("");
   const [newMemberRelation, setNewMemberRelation] = useState("ابن");
   const [newMemberAvatar, setNewMemberAvatar] = useState("👶");
 
@@ -61,16 +61,6 @@ export default function Dashboard() {
     }
   }>({
     me: {
-      medications: [],
-      archivedScans: [],
-      takenSlots: {}
-    },
-    father: {
-      medications: [],
-      archivedScans: [],
-      takenSlots: {}
-    },
-    mother: {
       medications: [],
       archivedScans: [],
       takenSlots: {}
@@ -297,12 +287,13 @@ export default function Dashboard() {
   // --- Family Addition Action ---
   const handleAddFamilyMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMemberName.trim()) return;
+    if (!newMemberName.trim() || !newMemberAge.trim()) return;
 
     const newId = "member-" + Math.random().toString(36).substring(7);
     const newMember: FamilyMember = {
       id: newId,
       name: newMemberName,
+      age: newMemberAge,
       relation: newMemberRelation,
       avatar: newMemberAvatar
     };
@@ -322,6 +313,7 @@ export default function Dashboard() {
     // Switch to this new member instantly
     setActiveMemberId(newId);
     setNewMemberName("");
+    setNewMemberAge("");
     setAddMemberOpen(false);
   };
 
@@ -599,16 +591,31 @@ export default function Dashboard() {
 
           <form onSubmit={handleAddFamilyMember} className="space-y-5">
             <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-2xl space-y-4">
-              <div>
-                <label className="block text-xs font-extrabold text-slate-350 mb-1.5">الاسم ثلاثي أو مستعار</label>
-                <input 
-                  type="text" 
-                  required
-                  value={newMemberName}
-                  onChange={(e) => setNewMemberName(e.target.value)}
-                  placeholder="مثال: يوسف، الوالدة، سارة..." 
-                  className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors" 
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-350 mb-1.5">الاسم ثلاثي أو مستعار</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                    placeholder="مثال: يوسف، الوالدة، سارة..." 
+                    className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-350 mb-1.5">العمر</label>
+                  <input 
+                    type="number" 
+                    required
+                    min="1"
+                    max="120"
+                    value={newMemberAge}
+                    onChange={(e) => setNewMemberAge(e.target.value)}
+                    placeholder="مثال: 12" 
+                    className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors text-right" 
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -3,6 +3,7 @@ import { UploadCloud, FileImage, Loader2, X, AlertCircle } from 'lucide-react';
 import { Medication, ScanResponse } from '../types';
 import { getSimulatedPrescriptionMeds } from '../data/medicationDb';
 import { scanPrescriptionClient, compressImage } from '../utils/geminiClient';
+import WebRTCCamera from './WebRTCCamera';
 
 interface PrescriptionUploadProps {
   onScanComplete: (medications: Medication[]) => void;
@@ -15,7 +16,9 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  
+  const [showWebRTCCamera, setShowWebRTCCamera] = useState(false);
+  const [medicalSpecialty, setMedicalSpecialty] = useState("");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -35,7 +38,23 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
     setPreviewUrl(null);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const dataURLtoFile = (dataurl: string, filename: string) => {
+    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)![1],
+        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, {type:mime});
+  };
+
+  const handleWebRTCCapture = (base64Image: string) => {
+    const file = dataURLtoFile(base64Image, 'camera-capture.jpg');
+    setFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setError(null);
+    setShowWebRTCCamera(false);
   };
 
   const handleScan = async () => {
@@ -49,7 +68,8 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
       const { base64Data, mimeType } = await compressImage(file);
 
       // Call our client-side Serverless Gemini API Client!
-      const medicationsWithIds = await scanPrescriptionClient(base64Data, mimeType);
+      // Pass the medical specialty to help Gemini identify correct medications
+      const medicationsWithIds = await scanPrescriptionClient(base64Data, mimeType, medicalSpecialty);
 
       onScanComplete(medicationsWithIds);
 
@@ -60,6 +80,17 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
       setIsScanning(false);
     }
   };
+
+  if (showWebRTCCamera) {
+    return (
+      <WebRTCCamera 
+        onCapture={handleWebRTCCapture} 
+        onCancel={() => setShowWebRTCCamera(false)}
+        medicalSpecialty={medicalSpecialty}
+        setMedicalSpecialty={setMedicalSpecialty}
+      />
+    );
+  }
 
   return (
     <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl shadow-lg border border-slate-800 p-6 sm:p-8 w-full max-w-2xl mx-auto text-right text-white" dir="rtl">
@@ -99,10 +130,10 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
               <span>📁 رفع من المعرض / الملفات</span>
             </button>
 
-            {/* Direct Rear Camera Button */}
+            {/* Direct Rear Camera Button (WebRTC) */}
             <button
               type="button"
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={() => setShowWebRTCCamera(true)}
               className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-400 hover:to-teal-500 text-slate-950 font-black py-3.5 px-5 rounded-2xl transition-all shadow-lg active:scale-95 text-xs flex items-center justify-center gap-2 cursor-pointer h-12"
             >
               <span>📸 التقاط صورة حية</span>
@@ -116,14 +147,6 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
             ref={fileInputRef} 
             onChange={handleFileChange}
             accept="image/*"
-          />
-          <input 
-            type="file" 
-            className="hidden" 
-            ref={cameraInputRef} 
-            onChange={handleFileChange}
-            accept="image/*"
-            capture="environment"
           />
         </div>
       ) : (

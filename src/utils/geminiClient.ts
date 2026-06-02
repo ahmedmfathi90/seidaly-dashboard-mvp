@@ -64,20 +64,26 @@ export function compressImage(file: File): Promise<{ base64Data: string, mimeTyp
 /**
  * Performs expert clinical OCR/Analysis on a prescription or medication box image directly from the browser.
  */
-export async function scanPrescriptionClient(base64Image: string, mimeType: string): Promise<Medication[]> {
+export async function scanPrescriptionClient(base64Image: string, mimeType: string, medicalSpecialty?: string): Promise<Medication[]> {
   const apiKey = getApiKey();
   const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
+
+  const specialtyContext = medicalSpecialty && medicalSpecialty !== "عام (غير محدد)" 
+    ? `The patient is visiting a doctor with the specialty: ${medicalSpecialty}. Use this specialty to heavily narrow down your drug guesses if the handwriting is unclear.` 
+    : '';
 
   const prompt = `
 You are an expert pharmacist with decades of experience in deciphering complex, handwritten medical prescriptions or analyzing commercial medicine box packaging. Your task is to accurately analyze the attached prescription image, extract the medication details, and provide basic pharmacological information for each recognized drug based on your vast medical knowledge.
 
-Extract the information into a strict JSON array of objects. Each object must represent one medication and strictly follow this schema:
-- "name": The exact commercial drug name (string, e.g. "Augmentin").
+${specialtyContext}
+
+Extract the information into a strict JSON array of objects. Each object must represent one medication and strictly follow this schema EXACTLY with these keys:
+- "medicationName": The exact commercial drug name (string, e.g. "Augmentin").
 - "dosage": Concentration or dose (string, e.g., "500mg" or "1g").
 - "form": Form of drug (string, e.g., "Tablet", "Syrup", "Capsule", "Injection").
 - "frequency": How often to take it (string, in Arabic, e.g., "كل 12 ساعة").
 - "duration": Length of treatment (string, in Arabic, e.g., "٧ أيام").
-- "specialInstructions": Any extra instructions or notes (string, in Arabic, e.g., "يؤخذ بعد الأكل").
+- "notes": Any extra instructions or notes (string, in Arabic, e.g., "يؤخذ بعد الأكل").
 - "activeIngredient": The primary scientific active ingredient(s) of this exact commercial drug (string, e.g. "Amoxicillin + Clavulanic Acid").
 - "medicalUse": A short, patient-friendly explanation of what this medication is used for in Arabic (string, e.g. "مضاد حيوي لعلاج العدوى البكتيرية").
 - "detailedInfo": An object containing factual clinical information about the drug in Arabic:
