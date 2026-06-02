@@ -67,33 +67,20 @@ export function compressImage(file: File): Promise<{ base64Data: string, mimeTyp
 export async function scanPrescriptionClient(base64Image: string, mimeType: string, medicalSpecialty?: string): Promise<Medication[]> {
   const apiKey = getApiKey();
   const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
+  const selectedSpecialty = medicalSpecialty || 'General';
 
-  const specialtyContext = medicalSpecialty && medicalSpecialty !== "عام (غير محدد)" 
-    ? `The patient is visiting a doctor with the specialty: ${medicalSpecialty}. Use this specialty to heavily narrow down your drug guesses if the handwriting is unclear.` 
-    : '';
+  const prompt = `You are an expert Egyptian Pharmacist reading a difficult prescription.
+CRITICAL CONTEXT: This prescription was written by a doctor specializing in '${selectedSpecialty}'.
 
-  const prompt = `
-You are an expert pharmacist with decades of experience in deciphering complex, handwritten medical prescriptions or analyzing commercial medicine box packaging. Your task is to accurately analyze the attached prescription image, extract the medication details, and provide basic pharmacological information for each recognized drug based on your vast medical knowledge.
+YOUR STRICT INSTRUCTIONS:
 
-${specialtyContext}
+You MUST heavily bias and filter your medication guesses based on the '${selectedSpecialty}'. If a handwritten word is ambiguous, you are FORBIDDEN from guessing a drug unrelated to this specialty.
 
-Extract the information into a strict JSON array of objects. Each object must represent one medication and strictly follow this schema EXACTLY with these keys:
-- "medicationName": The exact commercial drug name (string, e.g. "Augmentin").
-- "dosage": Concentration or dose (string, e.g., "500mg" or "1g").
-- "form": Form of drug (string, e.g., "Tablet", "Syrup", "Capsule", "Injection").
-- "frequency": How often to take it (string, in Arabic, e.g., "كل 12 ساعة").
-- "duration": Length of treatment (string, in Arabic, e.g., "٧ أيام").
-- "notes": Any extra instructions or notes (string, in Arabic, e.g., "يؤخذ بعد الأكل").
-- "activeIngredient": The primary scientific active ingredient(s) of this exact commercial drug (string, e.g. "Amoxicillin + Clavulanic Acid").
-- "medicalUse": A short, patient-friendly explanation of what this medication is used for in Arabic (string, e.g. "مضاد حيوي لعلاج العدوى البكتيرية").
-- "detailedInfo": An object containing factual clinical information about the drug in Arabic:
-  - "indications": Array of strings representing why this drug is used/prescribed (in Arabic).
-  - "sideEffects": Array of strings representing common side effects of the drug (in Arabic).
-  - "contraindications": Array of strings representing situations where this drug is contraindicated (in Arabic).
+NEVER output 'Unknown', 'غير معروف', or leave the medicationName empty. You must make your absolute best educated guess for the English Commercial Drug Name available in Egypt.
 
-CRUCIAL RULE: You are an expert Egyptian Pharmacist. You are strictly FORBIDDEN from using the words 'unknown', 'غير معروف', or leaving the medicationName blank. If the handwriting is illegible, you MUST intelligently GUESS the most likely commercial drug name available in Egypt based entirely on the provided Medical Specialty and the context of the other legible words (like dosage or instructions). A highly educated guess is mandatory. Never fail to provide a specific drug name.
-Output ONLY a valid JSON array. No markdown formatting, no explanations, no text outside the JSON array.
-  `;
+The medicationName MUST be in English letters. Do not translate the drug name itself to Arabic.
+
+Output a strict JSON array with keys: medicationName, dosage, frequency, duration, notes, activeIngredient, medicalUse (in Arabic).`;
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
@@ -166,11 +153,13 @@ Output ONLY a valid JSON array. No markdown formatting, no explanations, no text
     
     const arrayResult = Array.isArray(parsed) ? parsed : [parsed];
     return arrayResult.map((m: any) => {
-      const name = m.name || "دواء غير معروف";
+      const name = m.medicationName || m.name || "Unknown Medication";
       return {
         ...m,
         id: m.id || "med-" + Math.random().toString(36).substring(7),
         name: name,
+        form: m.form || "Tablet",
+        specialInstructions: m.notes || m.specialInstructions || "لا يوجد",
         timings: ["09:00 AM"],
         inventoryQty: 30
       };
