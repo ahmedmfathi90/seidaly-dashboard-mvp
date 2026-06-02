@@ -123,12 +123,39 @@ Rules:
     }
 
     const result = await response.json();
+    
+    // Check if Gemini API returned candidates with content parts
     const textOutput = result.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!textOutput) {
-      throw new Error("No text output received from Gemini API");
+      console.warn("⚠️ Empty candidates response from Gemini API, checking for safety blocks:", result);
+      if (result.promptFeedback?.blockReason) {
+        throw new Error(`تم حظر الصورة بواسطة إعدادات الحماية لـ Gemini: ${result.promptFeedback.blockReason}`);
+      }
+      throw new Error("لم نتمكن من استخراج نص من الصورة. يرجى التأكد من وضوح الصورة وخلوها من الظلال.");
     }
 
-    let parsed = JSON.parse(textOutput);
+    let cleanText = textOutput.trim();
+    // Resilient cleaning of markdown code blocks
+    if (cleanText.includes("```")) {
+      cleanText = cleanText.replace(/```json/gi, "").replace(/```/g, "").trim();
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleanText);
+    } catch (parseErr) {
+      console.warn("⚠️ JSON.parse failed, trying regex recovery for JSON array:", parseErr);
+      const match = cleanText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      const objectMatch = cleanText.match(/\{\s*[\s\S]*\}/);
+      if (match) {
+        parsed = JSON.parse(match[0]);
+      } else if (objectMatch) {
+        parsed = JSON.parse(objectMatch[0]);
+      } else {
+        throw new Error("فشل في معالجة استجابة الذكاء الاصطناعي كملف JSON صالح.");
+      }
+    }
+
     if (parsed.medications) {
       parsed = parsed.medications;
     }
@@ -145,9 +172,9 @@ Rules:
       };
     });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("⚠️ Client-side Gemini scan failed:", err);
-    throw new Error("⚠️ لم نتمكن من التعرف على الدواء بدقة. يرجى تصوير العلبة أو الروشتة بوضوح في إضاءة جيدة والمحاولة مجدداً.");
+    throw new Error(err.message || "⚠️ لم نتمكن من التعرف على الدواء بدقة. يرجى تصوير العلبة أو الروشتة بوضوح في إضاءة جيدة والمحاولة مجدداً.");
   }
 }
 
