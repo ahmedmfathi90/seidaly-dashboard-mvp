@@ -214,7 +214,7 @@ export default function LandingPage() {
               onClick={() => setHasSeenLanding(true)}
               className="px-8 py-4 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-base shadow-xl shadow-teal-500/20 transition-colors"
             >
-              ابدأ الاستخدام مجاناً ←
+              ابدأ الاستخدام الآن ←
             </motion.button>
 
             {deferredPrompt && (
@@ -403,25 +403,25 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Text Content (Right) */}
-            <div className="flex-1 text-right order-1 lg:order-2 w-full">
+            {/* Text Content (Centered) */}
+            <div className="flex-1 text-center order-1 lg:order-2 w-full flex flex-col items-center justify-center">
               <div className="w-14 h-14 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mb-6 text-teal-400">
                 <HeartPulse className="w-7 h-7" />
               </div>
               <h2 className="text-3xl sm:text-4xl font-black mb-4 text-white leading-tight">
                 جاهز للبدء؟
               </h2>
-              <p className="text-slate-400 text-base sm:text-lg leading-relaxed mb-8 font-medium">
-                انضم وابدأ في حماية صحة عائلتك. مجاني بالكامل وبدون أي تعقيد.
+              <p className="text-slate-400 text-base sm:text-lg leading-relaxed mb-8 font-medium max-w-md">
+                انضم وابدأ في حماية صحة عائلتك بدون أي تعقيد.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-start sm:justify-end">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setHasSeenLanding(true)}
                   className="px-10 py-4 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-lg shadow-xl shadow-teal-500/20 transition-colors"
                 >
-                  ابدأ مجاناً الآن ←
+                  حمل الآن ←
                 </motion.button>
                 {deferredPrompt && (
                   <motion.button
@@ -435,7 +435,7 @@ export default function LandingPage() {
                   </motion.button>
                 )}
               </div>
-              <p className="text-slate-600 text-xs mt-6 font-medium">مجاني 100% · بدون اشتراك · يعمل بدون إنترنت</p>
+              <p className="text-slate-600 text-xs mt-6 font-medium">بدون اشتراك · يعمل بدون إنترنت</p>
             </div>
           </div>
         </motion.div>
