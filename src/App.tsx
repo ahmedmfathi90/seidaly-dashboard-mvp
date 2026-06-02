@@ -4,11 +4,96 @@ import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import LandingPage from './components/LandingPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { usePushNotifications } from './hooks/usePushNotifications';
+import { useNotifications } from './hooks/useNotifications';
 
 function AppContent() {
-  const { userName, isLoggedIn, setIsLoggedIn, hasSeenLanding } = useAuth();
-  const { showPrompt, requestPermission, dismissPrompt } = usePushNotifications();
+  const { userName, userAge, isLoggedIn, setIsLoggedIn, hasSeenLanding } = useAuth();
+  const { showPrompt, iosWarning, requestPermission, dismissPrompt } = useNotifications();
+
+  // --- Global Medication Alarm Scheduler ---
+  React.useEffect(() => {
+    const checkAlarms = () => {
+      const savedData = localStorage.getItem('seidaly_membersData');
+      if (!savedData) return;
+
+      try {
+        const data = JSON.parse(savedData);
+        // Format current time as "hh:mm A" (e.g. "09:00 AM")
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = now.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 hour should be 12
+        const strHours = hours < 10 ? '0' + hours : hours.toString();
+        const strMinutes = minutes < 10 ? '0' + minutes : minutes.toString();
+        const currentTimeStr = `${strHours}:${strMinutes} ${ampm}`;
+
+        // Get saved list of family profiles for names
+        const familySaved = localStorage.getItem('seidaly_familyMembers');
+        const familyList = familySaved ? JSON.parse(familySaved) : [];
+
+        // Loop over all members in membersData
+        Object.keys(data).forEach(memberId => {
+          const memberObj = data[memberId];
+          const meds = memberObj.medications || [];
+          const memberProfile = familyList.find((f: any) => f.id === memberId);
+          const memberName = memberProfile ? memberProfile.name : (memberId === 'me' ? 'الأساسي' : 'المرافق');
+
+          meds.forEach((med: any) => {
+            const timings = med.timings || [];
+            if (timings.includes(currentTimeStr)) {
+              const notificationTag = `alarm-${med.id}-${currentTimeStr}`;
+              
+              if ('serviceWorker' in navigator && 'Notification' in window) {
+                if (Notification.permission === 'granted') {
+                  navigator.serviceWorker.ready.then(reg => {
+                    if (reg.active) {
+                      reg.active.postMessage({
+                        type: 'SHOW_NOTIFICATION',
+                        payload: {
+                          title: `تذكير بموعد الدواء ⏰ (${med.name})`,
+                          body: `حان الآن موعد جرعة ${med.name} (${med.dosage}) للمريض: ${memberName}. يرجى تناولها بالوقت المحدد.`,
+                          icon: '/pwa-192x192.png',
+                          badge: '/pwa-192x192.png',
+                          vibrate: [200, 100, 200],
+                          tag: notificationTag,
+                          data: '/'
+                        }
+                      });
+                    } else {
+                      reg.showNotification(`تذكير بموعد الدواء ⏰ (${med.name})`, {
+                        body: `حان الآن موعد جرعة ${med.name} (${med.dosage}) للمريض: ${memberName}.`,
+                        icon: '/pwa-192x192.png',
+                        badge: '/pwa-192x192.png',
+                        vibrate: [200, 100, 200],
+                        tag: notificationTag
+                      } as any);
+                    }
+                  });
+                }
+              } else if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`تذكير بموعد الدواء ⏰ (${med.name})`, {
+                  body: `حان الآن موعد جرعة ${med.name} (${med.dosage}) للمريض: ${memberName}.`,
+                  icon: '/pwa-192x192.png',
+                  tag: notificationTag
+                });
+              }
+            }
+          });
+        });
+      } catch (err) {
+        console.error('Error in local alarm scheduler:', err);
+      }
+    };
+
+    // Run checking immediately
+    checkAlarms();
+
+    // Check every 60 seconds
+    const intervalId = setInterval(checkAlarms, 60000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   if (!hasSeenLanding) {
     return <LandingPage />;
@@ -39,8 +124,8 @@ function AppContent() {
           </div>
           <div className="flex items-center gap-3">
              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 bg-slate-950/40 py-1.5 px-3 rounded-xl border border-slate-800">
-               <User className="w-4 h-4 text-teal-400 fill-teal-400/10" />
-               <span>{userName}</span>
+                <User className="w-4 h-4 text-teal-400 fill-teal-400/10" />
+                <span>{userName}</span>
              </div>
              
              {/* Logout / Switch Name Button */}
@@ -59,7 +144,7 @@ function AppContent() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
                 </span>
                 AI Core Online
-             </div>
+              </div>
           </div>
         </div>
       </header>
@@ -73,27 +158,44 @@ function AppContent() {
       {showPrompt && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95">
-            <div className="w-12 h-12 bg-teal-500/20 text-teal-400 rounded-full flex items-center justify-center mb-4 border border-teal-500/30">
+            <div className="w-12 h-12 bg-teal-50/20 text-teal-400 rounded-full flex items-center justify-center mb-4 border border-teal-500/30">
               <Activity className="w-6 h-6 animate-pulse" />
             </div>
             <h3 className="text-lg font-bold text-white mb-2 text-right" dir="rtl">تفعيل الإشعارات</h3>
-            <p className="text-sm text-slate-400 mb-6 text-right leading-relaxed" dir="rtl">
-              اسمح لنا بإرسال إشعارات لتذكيرك بمواعيد الأدوية الخاصة بك وعائلتك في الوقت المناسب.
-            </p>
-            <div className="flex gap-3 w-full">
-              <button 
-                onClick={dismissPrompt}
-                className="flex-1 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors"
-              >
-                ليس الآن
-              </button>
-              <button 
-                onClick={requestPermission}
-                className="flex-1 min-h-[44px] bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-xl transition-colors shadow-lg shadow-teal-500/20"
-              >
-                موافق
-              </button>
-            </div>
+            
+            {iosWarning ? (
+              <div className="space-y-4">
+                <p className="text-sm text-rose-400 bg-rose-950/20 border border-rose-900/40 p-4 rounded-2xl text-right leading-relaxed font-bold" dir="rtl">
+                  {iosWarning}
+                </p>
+                <button 
+                  onClick={dismissPrompt}
+                  className="w-full min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  حسناً، فهمت
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-400 mb-6 text-right leading-relaxed" dir="rtl">
+                  اسمح لنا بإرسال إشعارات لتذكيرك بمواعيد الأدوية الخاصة بك وعائلتك في الوقت المناسب.
+                </p>
+                <div className="flex gap-3 w-full">
+                  <button 
+                    onClick={dismissPrompt}
+                    className="flex-1 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors"
+                  >
+                    ليس الآن
+                  </button>
+                  <button 
+                    onClick={requestPermission}
+                    className="flex-1 min-h-[44px] bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-xl transition-colors shadow-lg shadow-teal-500/20"
+                  >
+                    موافق
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

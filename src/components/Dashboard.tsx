@@ -36,11 +36,23 @@ export default function Dashboard() {
   const [scanOpen, setScanOpen] = useState(false);
 
   // --- Family Members Profile State ---
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
-    { id: "me", name: userName, age: userAge || "30", relation: "أنا", avatar: "👨‍⚕️" }
-  ]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(() => {
+    const saved = localStorage.getItem('seidaly_familyMembers');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      { id: "me", name: userName, age: userAge || "30", relation: "أنا", avatar: "👨‍⚕️" }
+    ];
+  });
 
-  const [activeMemberId, setActiveMemberId] = useState<string>("me");
+  const [activeMemberId, setActiveMemberId] = useState<string>(() => {
+    return localStorage.getItem('seidaly_activeMemberId') || 'me';
+  });
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberAge, setNewMemberAge] = useState("");
@@ -49,8 +61,17 @@ export default function Dashboard() {
 
   // Keep family names updated if the main user changes their name in auth
   React.useEffect(() => {
-    setFamilyMembers(prev => prev.map(m => m.id === "me" ? { ...m, name: userName } : m));
-  }, [userName]);
+    setFamilyMembers(prev => prev.map(m => m.id === "me" ? { ...m, name: userName, age: userAge || m.age } : m));
+  }, [userName, userAge]);
+
+  // Sync family profiles to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('seidaly_familyMembers', JSON.stringify(familyMembers));
+  }, [familyMembers]);
+
+  React.useEffect(() => {
+    localStorage.setItem('seidaly_activeMemberId', activeMemberId);
+  }, [activeMemberId]);
 
   // --- Multi-Profile Storage System ---
   const [membersData, setMembersData] = useState<{
@@ -59,13 +80,28 @@ export default function Dashboard() {
       archivedScans: ArchivedVisit[];
       takenSlots: { [key: string]: boolean };
     }
-  }>({
-    me: {
-      medications: [],
-      archivedScans: [],
-      takenSlots: {}
+  }>(() => {
+    const saved = localStorage.getItem('seidaly_membersData');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
     }
+    return {
+      me: {
+        medications: [],
+        archivedScans: [],
+        takenSlots: {}
+      }
+    };
   });
+
+  // Sync active medical schedule database & archive logs to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('seidaly_membersData', JSON.stringify(membersData));
+  }, [membersData]);
 
   // Helper getters for active profile
   const currentMemberData = membersData[activeMemberId] || { medications: [], archivedScans: [], takenSlots: {} };

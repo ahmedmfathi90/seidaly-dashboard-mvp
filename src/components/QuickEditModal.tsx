@@ -190,247 +190,273 @@ export default function QuickEditModal({ medication, isOpen, onClose, onSave, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 p-0 sm:p-4" onClick={onClose}>
       <div 
-        className="bg-white rounded-3xl shadow-xl w-full max-w-xl overflow-hidden border border-slate-100 flex flex-col md:max-h-[90vh] animate-in zoom-in-95 duration-300"
+        className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-xl max-h-[90dvh] flex flex-col overflow-hidden border border-slate-100 animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
         dir="rtl"
       >
         {/* Header Block */}
-        <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-slate-50/60">
+        <div className="flex justify-between items-center px-5 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             {renderMedIcon()}
             <div>
-              <h2 className="text-xl font-extrabold text-slate-800">تعديل مواعيد الدواء والجرعة</h2>
-              <p className="text-xs text-slate-500 mt-0.5">جدولة دقيقة بأسلوب Medisafe الذكي</p>
+              <h2 className="text-lg font-black text-slate-800">تعديل تفاصيل الدواء</h2>
+              <p className="text-[11px] text-slate-500 font-medium">جدولة وتعديل أوقات الجرعات والمخزون</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-full transition-all focus:outline-none"
+            className="p-2 text-slate-400 hover:text-slate-650 hover:bg-slate-200/50 rounded-full transition-all focus:outline-none cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Scroll area */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1 text-right">
+        <div className="p-4 space-y-6 overflow-y-auto flex-1 text-right text-slate-800">
           
-          {/* Section: Basic info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">اسم الدواء</label>
-              <input 
-                type="text" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)}
-                placeholder="مثال: بانادول"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 font-bold focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">الجرعة (Dosage)</label>
-              <input 
-                type="text" 
-                value={dosage} 
-                onChange={(e) => setDosage(e.target.value)}
-                placeholder="مثال: 500mg أو كبسولة"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 font-bold focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none"
-              />
-            </div>
-          </div>
+          {/* Card Section 1: Medication Identity */}
+          <div className="border border-slate-100 bg-slate-50/40 rounded-2xl p-4 space-y-4">
+            <h3 className="font-extrabold text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+              <Pill className="w-4 h-4 text-teal-600" />
+              <span>هوية الدواء (الاسم والشكل والجرعة)</span>
+            </h3>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">شكل الدواء</label>
-              <select 
-                value={form} 
-                onChange={(e) => setForm(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none"
-              >
-                <option value="Tablet">أقراص (Tablets)</option>
-                <option value="Capsule">كبسولات (Capsules)</option>
-                <option value="Syrup">شراب / سائل (Syrup)</option>
-                <option value="Injection">حقن (Injection)</option>
-                <option value="Drops">قطرة (Drops)</option>
-                <option value="Inhaler">بخاخ (Inhaler)</option>
-                <option value="Ointment">مرهم / كريم (Ointment)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">المدة (Duration)</label>
-              <input 
-                type="text" 
-                value={duration} 
-                onChange={(e) => setDuration(e.target.value)}
-                placeholder="مثال: 7 أيام"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Section: Interval Automations */}
-          <div className="bg-teal-50/50 rounded-2xl p-4 border border-teal-100/50">
-            <h4 className="text-sm font-bold text-teal-950 mb-3 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-teal-600 animate-pulse" />
-              أتمتة الفترات الزمنية السريعة:
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button 
-                type="button"
-                onClick={() => handleIntervalChange('24h')}
-                className={`py-2 px-3 text-xs rounded-xl font-bold border transition-all ${intervalOption === '24h' ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
-              >
-                كل 24 ساعة (مرة)
-              </button>
-              <button 
-                type="button"
-                onClick={() => handleIntervalChange('12h')}
-                className={`py-2 px-3 text-xs rounded-xl font-bold border transition-all ${intervalOption === '12h' ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
-              >
-                كل 12 ساعة (مرتين)
-              </button>
-              <button 
-                type="button"
-                onClick={() => handleIntervalChange('8h')}
-                className={`py-2 px-3 text-xs rounded-xl font-bold border transition-all ${intervalOption === '8h' ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
-              >
-                كل 8 ساعات (3 مرات)
-              </button>
-              <button 
-                type="button"
-                onClick={() => handleIntervalChange('needed')}
-                className={`py-2 px-3 text-xs rounded-xl font-bold border transition-all ${intervalOption === 'needed' ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
-              >
-                عند اللزوم فقط
-              </button>
-            </div>
-          </div>
-
-          {/* Section: Visual Time Blocks */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">مواعيد تناول الدوّاء (أوقات التنبيه)</label>
-            <div className="grid grid-cols-3 gap-3">
-              <button 
-                type="button"
-                onClick={() => { setMorning(!morning); setIntervalOption('custom'); }}
-                className={`p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${morning ? 'border-teal-500 bg-teal-50/40 text-teal-900 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
-              >
-                <span className="text-2xl">🌅</span>
-                <span className="font-bold text-sm">الصبح</span>
-                <span className="text-xs text-slate-500">09:00 AM</span>
-              </button>
-
-              <button 
-                type="button"
-                onClick={() => { setNoon(!noon); setIntervalOption('custom'); }}
-                className={`p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${noon ? 'border-teal-500 bg-teal-50/40 text-teal-900 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
-              >
-                <span className="text-2xl">☀️</span>
-                <span className="font-bold text-sm">الظهر</span>
-                <span className="text-xs text-slate-500">02:00 PM</span>
-              </button>
-
-              <button 
-                type="button"
-                onClick={() => { setNight(!night); setIntervalOption('custom'); }}
-                className={`p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${night ? 'border-teal-500 bg-teal-50/40 text-teal-900 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
-              >
-                <span className="text-2xl">🌙</span>
-                <span className="font-bold text-sm">بالليل</span>
-                <span className="text-xs text-slate-500">10:00 PM</span>
-              </button>
-            </div>
-            {!morning && !noon && !night && intervalOption !== 'needed' && (
-              <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                تحذير: لم تختر أي مواعيد. سيتم جدولة الدواء للتنبيه عند الحاجة فقط.
-              </p>
-            )}
-          </div>
-
-          {/* Section: Food Instructions */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">العلاقة بالوجبات</label>
-            <div className="grid grid-cols-3 gap-3">
-              <button 
-                type="button"
-                onClick={() => setFoodInstruction('before')}
-                className={`py-3 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${foodInstruction === 'before' ? 'bg-indigo-50/80 border-indigo-400 text-indigo-900 ring-2 ring-indigo-500/10' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-              >
-                <span>🍽️</span> قبل الأكل
-              </button>
-
-              <button 
-                type="button"
-                onClick={() => setFoodInstruction('after')}
-                className={`py-3 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${foodInstruction === 'after' ? 'bg-indigo-50/80 border-indigo-400 text-indigo-900 ring-2 ring-indigo-500/10' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-              >
-                <span>🍔</span> بعد الأكل
-              </button>
-
-              <button 
-                type="button"
-                onClick={() => setFoodInstruction('needed')}
-                className={`py-3 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${foodInstruction === 'needed' ? 'bg-indigo-50/80 border-indigo-400 text-indigo-900 ring-2 ring-indigo-500/10' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-              >
-                <span>💊</span> عند اللزوم
-              </button>
-            </div>
-          </div>
-
-          {/* Section: Inventory & Alarm */}
-          <div className="border-t border-slate-100 pt-5 space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">كمية العلبة المتوفرة بالمخزون</label>
-              <div className="relative flex items-center">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-550 mb-1.5">اسم الدواء</label>
                 <input 
-                  type="number" 
-                  value={inventoryQty} 
-                  onChange={(e) => setInventoryQty(Math.max(0, Number(e.target.value)))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none font-bold"
-                  placeholder="مثال: 30 قرص أو 100 مل"
+                  type="text" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="مثال: بانادول"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 font-bold focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all outline-none"
                 />
-                <span className="absolute left-3 text-xs font-bold text-slate-400 bg-slate-100 py-1.5 px-3 rounded-lg">
-                  {form.toLowerCase().includes('syrup') ? 'مللي (ml)' : 'جرعة/قرص'}
-                </span>
               </div>
-              <p className="text-xs text-slate-400 mt-1">يساعدنا ذلك في تنبيهك قبل نفاد المخزون من الصيدلية المنزلية.</p>
+              <div>
+                <label className="block text-xs font-bold text-slate-550 mb-1.5">الجرعة (Dosage)</label>
+                <input 
+                  type="text" 
+                  value={dosage} 
+                  onChange={(e) => setDosage(e.target.value)}
+                  placeholder="مثال: 500mg أو كبسولة"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 font-bold focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all outline-none"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200/60 mt-3">
-              <div className="flex items-start gap-2.5">
-                <div className="bg-teal-100 p-1.5 rounded-lg text-teal-700 mt-0.5">
-                  <Bell className="w-4 h-4" />
-                </div>
-                <div>
-                  <h5 className="font-bold text-sm text-slate-800">تفعيل جرس النفاذ (Refill Guard)</h5>
-                  <p className="text-xs text-slate-500 mt-0.5">سنقوم بتنبيهك فور تبقي أقل من 5 جرعات بالعلبة.</p>
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-550 mb-1.5">شكل الدواء</label>
+                <select 
+                  value={form} 
+                  onChange={(e) => setForm(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all outline-none"
+                >
+                  <option value="Tablet">أقراص (Tablets)</option>
+                  <option value="Capsule">كبسولات (Capsules)</option>
+                  <option value="Syrup">شراب / سائل (Syrup)</option>
+                  <option value="Injection">حقن (Injection)</option>
+                  <option value="Drops">قطرة (Drops)</option>
+                  <option value="Inhaler">بخاخ (Inhaler)</option>
+                  <option value="Ointment">مرهم / كريم (Ointment)</option>
+                </select>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
+              <div>
+                <label className="block text-xs font-bold text-slate-550 mb-1.5">المدة (Duration)</label>
                 <input 
-                  type="checkbox" 
-                  checked={refillAlertEnabled} 
-                  onChange={(e) => setRefillAlertEnabled(e.target.checked)}
-                  className="sr-only peer" 
+                  type="text" 
+                  value={duration} 
+                  onChange={(e) => setDuration(e.target.value)}
+                  placeholder="مثال: 7 أيام"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all outline-none"
                 />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600 pointer-events-none"></div>
-              </label>
+              </div>
             </div>
           </div>
+
+          {/* Card Section 2: Schedule & Meal Relation */}
+          <div className="border border-slate-100 bg-slate-50/40 rounded-2xl p-4 space-y-4">
+            <h3 className="font-extrabold text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+              <Clock className="w-4 h-4 text-teal-600" />
+              <span>جدول مواعيد الجرعات والتنبيهات</span>
+            </h3>
+
+            {/* Interval Automations */}
+            <div className="bg-teal-50/40 rounded-xl p-3 border border-teal-100/30">
+              <h4 className="text-xs font-bold text-teal-900 mb-2 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
+                أتمتة الفترات الزمنية السريعة:
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <button 
+                  type="button"
+                  onClick={() => handleIntervalChange('24h')}
+                  className={`py-1.5 px-2 text-[10px] rounded-lg font-bold border transition-all cursor-pointer ${intervalOption === '24h' ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                >
+                  كل 24 ساعة (مرة)
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => handleIntervalChange('12h')}
+                  className={`py-1.5 px-2 text-[10px] rounded-lg font-bold border transition-all cursor-pointer ${intervalOption === '12h' ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                >
+                  كل 12 ساعة (مرتين)
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => handleIntervalChange('8h')}
+                  className={`py-1.5 px-2 text-[10px] rounded-lg font-bold border transition-all cursor-pointer ${intervalOption === '8h' ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                >
+                  كل 8 ساعات (3 مرات)
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => handleIntervalChange('needed')}
+                  className={`py-1.5 px-2 text-[10px] rounded-lg font-bold border transition-all cursor-pointer ${intervalOption === 'needed' ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                >
+                  عند اللزوم فقط
+                </button>
+              </div>
+            </div>
+
+            {/* Time Blocks */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-2">مواعيد التنبيه اليومية</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button 
+                  type="button"
+                  onClick={() => { setMorning(!morning); setIntervalOption('custom'); }}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${morning ? 'border-teal-500 bg-teal-50/40 text-teal-900 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <span className="text-xl">🌅</span>
+                  <span className="font-bold text-xs">الصبح</span>
+                  <span className="text-[10px] text-slate-400">09:00 AM</span>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => { setNoon(!noon); setIntervalOption('custom'); }}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${noon ? 'border-teal-500 bg-teal-50/40 text-teal-900 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <span className="text-xl">☀️</span>
+                  <span className="font-bold text-xs">الظهر</span>
+                  <span className="text-[10px] text-slate-400">02:00 PM</span>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => { setNight(!night); setIntervalOption('custom'); }}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${night ? 'border-teal-500 bg-teal-50/40 text-teal-900 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <span className="text-xl">🌙</span>
+                  <span className="font-bold text-xs">بالليل</span>
+                  <span className="text-[10px] text-slate-400">10:00 PM</span>
+                </button>
+              </div>
+              {!morning && !noon && !night && intervalOption !== 'needed' && (
+                <p className="text-[10px] text-amber-600 mt-2 flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  تحذير: لم تختر مواعيد. سيتم التنبيه عند اللزوم فقط.
+                </p>
+              )}
+            </div>
+
+            {/* Food Instruction */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-2">العلاقة بالوجبات الغذائية</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button 
+                  type="button"
+                  onClick={() => setFoodInstruction('before')}
+                  className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 cursor-pointer ${foodInstruction === 'before' ? 'bg-indigo-50/80 border-indigo-400 text-indigo-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <span>🍽️</span> قبل الأكل
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setFoodInstruction('after')}
+                  className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 cursor-pointer ${foodInstruction === 'after' ? 'bg-indigo-50/80 border-indigo-400 text-indigo-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <span>🍔</span> بعد الأكل
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setFoodInstruction('needed')}
+                  className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 cursor-pointer ${foodInstruction === 'needed' ? 'bg-indigo-50/80 border-indigo-400 text-indigo-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <span>💊</span> عند اللزوم
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Advanced Inventory & Alarm (Collapsible Details) */}
+          <details className="group border border-slate-150 rounded-2xl bg-slate-50/30 overflow-hidden">
+            <summary className="font-extrabold text-xs p-4 cursor-pointer select-none flex items-center justify-between text-slate-500 hover:bg-slate-50/60 transition-all border-none">
+              <div className="flex items-center gap-1.5">
+                <Bell className="w-4 h-4 text-teal-600" />
+                <span>إعدادات المخزون والتنبيهات المتقدمة</span>
+              </div>
+              <span className="transition-transform group-open:rotate-180 text-xs">▼</span>
+            </summary>
+            
+            <div className="p-4 border-t border-slate-100 bg-white space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">الكمية المتوفرة بالمخزون</label>
+                <div className="relative flex items-center">
+                  <input 
+                    type="number" 
+                    value={inventoryQty} 
+                    onChange={(e) => setInventoryQty(Math.max(0, Number(e.target.value)))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all outline-none font-bold"
+                    placeholder="مثال: 30"
+                  />
+                  <span className="absolute left-2.5 text-[10px] font-bold text-slate-400 bg-slate-200/60 py-1 px-2.5 rounded-lg">
+                    {form.toLowerCase().includes('syrup') ? 'مللي (ml)' : 'جرعة/قرص'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">سنقوم بتذكيرك لإعادة الشراء من الصيدلية قبل نفاد هذا المخزون.</p>
+              </div>
+
+              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+                <div className="flex items-start gap-2">
+                  <div className="bg-teal-100 p-1.5 rounded-lg text-teal-700 mt-0.5">
+                    <Bell className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs text-slate-850">جرس نفاذ المخزون (Refill Guard)</h5>
+                    <p className="text-[10px] text-slate-400 mt-0.5">سننبهك فور تبقي أقل من 5 جرعات بالعلبة.</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={refillAlertEnabled} 
+                    onChange={(e) => setRefillAlertEnabled(e.target.checked)}
+                    className="sr-only peer" 
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600 pointer-events-none"></div>
+                </label>
+              </div>
+            </div>
+          </details>
+
         </div>
 
-        {/* Footer Actions */}
-        <div className="sticky bottom-0 z-10 px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        {/* Footer Actions (Sticky Bottom) */}
+        <div className="sticky bottom-0 z-10 px-5 py-3 border-t border-slate-100 bg-slate-50 flex justify-between gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.03)]">
           {onDelete ? (
             <button 
               type="button" 
               onClick={() => { onDelete(); onClose(); }}
-              className="px-4 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl text-sm font-bold flex items-center gap-1 transition-all"
+              className="px-3 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
             >
-              <Trash2 className="w-4 h-4" />
-              حذف تماماً
+              <Trash2 className="w-3.5 h-3.5" />
+              حذف الدواء
             </button>
           ) : (
             <div />
@@ -440,17 +466,17 @@ export default function QuickEditModal({ medication, isOpen, onClose, onSave, on
             <button 
               type="button" 
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200/50 rounded-xl transition-colors"
+              className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-250 rounded-xl transition-colors cursor-pointer"
             >
               إلغاء
             </button>
             <button 
               type="button" 
               onClick={handleSaveClick}
-              className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-sm shadow-teal-600/10 flex items-center gap-1.5"
+              className="bg-teal-600 hover:bg-teal-700 text-white font-black text-xs px-5 py-2.5 rounded-xl transition-all shadow-md shadow-teal-600/10 flex items-center gap-1.5 cursor-pointer"
             >
-              <Check className="w-4 h-4" />
-              حفظ وإغلاق
+              <Check className="w-3.5 h-3.5" />
+              حفظ المواعيد
             </button>
           </div>
         </div>
