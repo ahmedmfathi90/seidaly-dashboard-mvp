@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { UploadCloud, FileImage, Loader2, X, AlertCircle } from 'lucide-react';
 import { Medication, ScanResponse } from '../types';
 import { getSimulatedPrescriptionMeds } from '../data/medicationDb';
-import { scanPrescriptionClient } from '../utils/geminiClient';
+import { scanPrescriptionClient, compressImage } from '../utils/geminiClient';
 
 interface PrescriptionUploadProps {
   onScanComplete: (medications: Medication[]) => void;
@@ -45,20 +45,11 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
     setError(null);
 
     try {
-      // Read file as base64
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          const base64Str = result.split(',')[1] || result;
-          resolve(base64Str);
-        };
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
+      // High-performance image compression for mobile browser camera scans
+      const { base64Data, mimeType } = await compressImage(file);
 
       // Call our client-side Serverless Gemini API Client!
-      const medicationsWithIds = await scanPrescriptionClient(base64Data, file.type);
+      const medicationsWithIds = await scanPrescriptionClient(base64Data, mimeType);
 
       onScanComplete(medicationsWithIds);
 

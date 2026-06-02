@@ -11,7 +11,7 @@ import MedicationInfoModal from './MedicationInfoModal';
 import { Medication } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { lookupMedication, getSimulatedPrescriptionMeds } from '../data/medicationDb';
-import { scanPrescriptionClient, getDrugInfoClient } from '../utils/geminiClient';
+import { scanPrescriptionClient, getDrugInfoClient, compressImage } from '../utils/geminiClient';
 
 // Define typed schema for archive folders
 interface ArchivedVisit {
@@ -154,19 +154,11 @@ export default function Dashboard() {
       setScannedBoxInfo(null);
 
       try {
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            const base64Str = result.split(',')[1] || result;
-            resolve(base64Str);
-          };
-          reader.onerror = error => reject(error);
-          reader.readAsDataURL(file);
-        });
+        // High-performance compression for heavy mobile photos
+        const { base64Data, mimeType } = await compressImage(file);
 
         // Call our client-side Serverless Gemini API Client!
-        const medicationsWithIds = await scanPrescriptionClient(base64Data, file.type);
+        const medicationsWithIds = await scanPrescriptionClient(base64Data, mimeType);
 
         if (medicationsWithIds.length > 0) {
           // Open the information sheet popups directly without saving to active timeline schedule!
