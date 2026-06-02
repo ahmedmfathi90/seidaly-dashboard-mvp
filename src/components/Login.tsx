@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Pill, Activity, ArrowRightLeft, ShieldCheck, HeartPulse } from 'lucide-react';
+import { Pill, Activity, ArrowRightLeft, ShieldCheck, HeartPulse, ArrowRight } from 'lucide-react';
 
 export default function Login() {
   const { userName, setUserName, userAge, setUserAge, setIsLoggedIn, setHasSeenLanding } = useAuth();
@@ -33,8 +33,17 @@ export default function Login() {
 
       <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
         
+        {/* Back Button */}
+        <button 
+          onClick={() => setHasSeenLanding(false)}
+          className="absolute top-6 right-6 text-slate-400 hover:text-white flex items-center gap-2 text-xs font-bold transition-colors"
+        >
+          <ArrowRight className="w-4 h-4" />
+          العودة للصفحة الرئيسية
+        </button>
+
         {/* Logo and Brand */}
-        <div className="flex flex-col items-center text-center mb-8">
+        <div className="flex flex-col items-center text-center mt-4 mb-8">
           <div className="bg-teal-500/10 border border-teal-500/20 p-4 rounded-2xl text-teal-400 mb-4 shadow-inner">
             <Activity className="w-8 h-8 animate-pulse" />
           </div>

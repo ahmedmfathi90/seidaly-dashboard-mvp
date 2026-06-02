@@ -123,7 +123,7 @@ async function startApiServer() {
   // Scan Prescription endpoint
   app.post("/api/scan-prescription", enforceSubscriptionLimits, async (req, res) => {
     try {
-      const { imageBase64, mimeType } = req.body;
+      const { imageBase64, mimeType, medicalSpecialty } = req.body;
 
       if (!imageBase64 || !mimeType) {
         return res.status(400).json({ error: "Missing image data or mimeType" });
@@ -133,6 +133,8 @@ async function startApiServer() {
 
       const prompt = `
 You are an expert pharmacist and clinical drug recognition AI with decades of experience in deciphering complex, handwritten medical prescriptions or analyzing commercial medicine box packaging. Your task is to accurately analyze the attached image and extract the medication details.
+
+Use the provided Medical Specialty (${medicalSpecialty || 'General'}) to decode illegible handwriting. If a word is ambiguous, restrict your guesses to medications commonly prescribed by this specific specialty. You are perfectly capable of reading English drug names mixed with Arabic (RTL) dosage instructions.
 
 Extract the information into a strict JSON array of objects. Each object must represent one medication and strictly follow this schema:
 - "name": The commercial/brand drug name (string, e.g. "Augmentin").
