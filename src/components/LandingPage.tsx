@@ -133,7 +133,7 @@ function PhoneFrame({ children, className = '' }: { children: React.ReactNode; c
  */
 export default function LandingPage() {
   const { setHasSeenLanding } = useAuth();
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
 
   // ── The single state that controls the phone screen ──
   const [activeIdx, setActiveIdx] = useState(0);
@@ -143,7 +143,10 @@ export default function LandingPage() {
 
   // ── Capture PWA install prompt ──
   useEffect(() => {
-    const h = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
+    const h = (e: Event) => { 
+      e.preventDefault(); 
+      setInstallPrompt(e); 
+    };
     window.addEventListener('beforeinstallprompt', h);
     return () => window.removeEventListener('beforeinstallprompt', h);
   }, []);
@@ -169,10 +172,18 @@ export default function LandingPage() {
   const handleInstall = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (deferredPrompt) {
-      (deferredPrompt as any).prompt();
-      await (deferredPrompt as any).userChoice;
-      setDeferredPrompt(null);
+
+    // Check if it is an iOS device
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+
+    if (installPrompt) {
+      installPrompt.prompt();
+      await installPrompt.userChoice;
+      setInstallPrompt(null);
+    } else if (isIOS) {
+      alert("للتثبيت على آيفون:\n1. اضغط على أيقونة المشاركة (Share) في الأسفل.\n2. اختر (Add to Home Screen) أو (إضافة للشاشة الرئيسية).");
+    } else {
+      alert('عفواً، متصفحك لا يدعم التثبيت المباشر، يرجى التثبيت من قائمة المتصفح بالضغط على "Add to Home screen".');
     }
   };
 
@@ -219,17 +230,15 @@ export default function LandingPage() {
               ابدأ الاستخدام الآن ←
             </motion.button>
 
-            {deferredPrompt && (
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleInstall}
-                className="px-8 py-4 rounded-2xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-white font-bold text-base backdrop-blur transition-colors flex items-center gap-2"
-              >
-                <Zap className="w-5 h-5 text-teal-400" />
-                تثبيت التطبيق
-              </motion.button>
-            )}
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleInstall}
+              className="px-8 py-4 rounded-2xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-white font-bold text-base backdrop-blur transition-colors flex items-center gap-2"
+            >
+              <Zap className="w-5 h-5 text-teal-400" />
+              تثبيت التطبيق
+            </motion.button>
           </div>
 
           <div className="mt-16 flex flex-col items-center gap-2 text-slate-600">
