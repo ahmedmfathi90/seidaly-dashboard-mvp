@@ -9,6 +9,7 @@ import PrescriptionUpload from './PrescriptionUpload';
 import MedicationList from './MedicationList';
 import { Medication } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { lookupMedication } from '../data/medicationDb';
 
 // Define typed schema for archive folders
 interface ArchivedVisit {
@@ -214,12 +215,14 @@ export default function Dashboard() {
   const handleManualAddSave = async () => {
     if (!newName.trim()) return;
 
+    let enrichedMed: Medication | null = null;
+
     try {
       const response = await fetch(`/api/get-drug-info?name=${encodeURIComponent(newName)}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.medication) {
-          const fetchedMed: Medication = {
+          enrichedMed = {
             ...data.medication,
             id: "med-manual-" + Math.random().toString(36).substring(7),
             dosage: newDosage.trim() ? newDosage : data.medication.dosage,
@@ -227,30 +230,55 @@ export default function Dashboard() {
             timings: ["09:00 AM"],
             inventoryQty: 30
           };
-          setMedications(prev => [...prev, fetchedMed]);
-          setNewName("");
-          setNewDosage("");
-          setManualAddOpen(false);
-          return;
         }
       }
     } catch (e) {
-      console.warn("Failed to get dynamic drug details, saving with defaults:", e);
+      console.warn("Failed to get dynamic drug details, applying database fallback:", e);
     }
 
-    const newManual: Medication = {
-      id: "med-manual-" + Math.random().toString(36).substring(7),
-      name: newName,
-      dosage: newDosage || "غير محدد",
-      form: newForm,
-      frequency: "مرة واحدة يومياً (كل 24 ساعة)",
-      duration: "7 أيام",
-      specialInstructions: "بعد الأكل",
-      timings: ["09:00 AM"],
-      inventoryQty: 30,
-    };
+    // Client-side fallback if Express API failed or returned empty
+    if (!enrichedMed) {
+      const dbRecord = lookupMedication(newName);
+      if (dbRecord) {
+        enrichedMed = {
+          id: "med-manual-" + Math.random().toString(36).substring(7),
+          name: `${dbRecord.nameAr} (${dbRecord.name})`,
+          medicationName: `${dbRecord.nameAr} (${dbRecord.name})`,
+          dosage: newDosage.trim() ? newDosage : dbRecord.dosage,
+          form: newForm || dbRecord.form,
+          frequency: dbRecord.frequency,
+          duration: dbRecord.duration,
+          specialInstructions: dbRecord.specialInstructions,
+          activeIngredient: dbRecord.activeIngredient,
+          medicalUse: dbRecord.medicalUse,
+          detailedInfo: dbRecord.detailedInfo,
+          timings: ["09:00 AM"],
+          inventoryQty: 30
+        };
+      } else {
+        enrichedMed = {
+          id: "med-manual-" + Math.random().toString(36).substring(7),
+          name: newName,
+          medicationName: newName,
+          dosage: newDosage || "غير محدد",
+          form: newForm || "Tablet",
+          frequency: "مرة واحدة يومياً (كل 24 ساعة)",
+          duration: "7 أيام",
+          specialInstructions: "بعد الأكل",
+          activeIngredient: "غير محدد",
+          medicalUse: "دواء طبي - استشر الصيدلي",
+          detailedInfo: {
+            indications: [`علاج الأعراض الموصوفة لـ ${newName}`],
+            sideEffects: ["راجع النشرة الداخلية للدواء"],
+            contraindications: ["الحساسية للمادة الفعالة بالدواء"]
+          },
+          timings: ["09:00 AM"],
+          inventoryQty: 30
+        };
+      }
+    }
 
-    setMedications(prev => [...prev, newManual]);
+    setMedications(prev => [...prev, enrichedMed!]);
     setNewName("");
     setNewDosage("");
     setManualAddOpen(false);
