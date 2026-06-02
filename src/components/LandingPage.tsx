@@ -434,17 +434,15 @@ export default function LandingPage() {
                 >
                   حمل الآن ←
                 </motion.button>
-                {deferredPrompt && (
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleInstall}
-                    className="px-10 py-4 rounded-2xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-white font-bold text-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Zap className="w-5 h-5 text-teal-400" />
-                    تثبيت كـ PWA
-                  </motion.button>
-                )}
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleInstall}
+                  className="px-10 py-4 rounded-2xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-white font-bold text-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Zap className="w-5 h-5 text-teal-400" />
+                  تثبيت كـ PWA
+                </motion.button>
               </div>
               <p className="text-slate-600 text-xs mt-6 font-medium">بدون اشتراك · يعمل بدون إنترنت</p>
             </div>
