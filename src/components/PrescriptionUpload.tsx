@@ -4,7 +4,7 @@ import { Medication } from '../types';
 import { scanPrescriptionClient, compressImage } from '../utils/geminiClient';
 
 interface PrescriptionUploadProps {
-  onScanComplete: (medications: Medication[]) => void;
+  onScanComplete: (medications: Medication[], metadata?: { doctorName?: string; date?: string }) => void;
   onCancel?: () => void;
 }
 
@@ -129,9 +129,9 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
       const { base64Data, mimeType } = await compressImage(file);
 
       // Call our client-side Serverless Gemini API Client
-      const medicationsWithIds = await scanPrescriptionClient(base64Data, mimeType, medicalSpecialty);
+      const { medications, doctorName, prescriptionDate } = await scanPrescriptionClient(base64Data, mimeType, medicalSpecialty);
 
-      onScanComplete(medicationsWithIds);
+      onScanComplete(medications, { doctorName, date: prescriptionDate });
 
     } catch (err: any) {
       console.error(err);

@@ -187,7 +187,8 @@ export default function Dashboard() {
         const { base64Data, mimeType } = await compressImage(file);
 
         // Call our client-side Serverless Gemini API Client!
-        const medicationsWithIds = await scanPrescriptionClient(base64Data, mimeType);
+        const { medications } = await scanPrescriptionClient(base64Data, mimeType);
+        const medicationsWithIds = medications;
 
         if (medicationsWithIds.length > 0) {
           // Open the information sheet popups directly without saving to active timeline schedule!
@@ -229,7 +230,7 @@ export default function Dashboard() {
   const isSubViewActive = scanOpen || manualAddOpen || viewArchiveOpen || selectedArchive || editableMedications || addMemberOpen || boxScannerViewOpen;
 
   // --- Medication Actions ---
-  const handleMedicationUploadComplete = (medsFromOCR: any[]) => {
+  const handleMedicationUploadComplete = (medsFromOCR: any[], metadata?: { doctorName?: string; date?: string }) => {
     const robustMappedMeds = medsFromOCR.map(m => {
       const name = m.name || m.medicationName || m.medicineName || m.drugName || "دواء غير معروف";
       const specialInstructions = m.specialInstructions || m.notes || m.special_instructions || "لا يوجد";
@@ -248,7 +249,12 @@ export default function Dashboard() {
       };
     });
     setEditableMedications(robustMappedMeds);
-    setClinicNameInput("");
+    setClinicNameInput(metadata?.doctorName || "");
+    if (metadata?.date) {
+      setVisitDateInput(metadata.date);
+    } else {
+      setVisitDateInput(new Date().toISOString().split('T')[0]);
+    }
     setScanOpen(false);
   };
 
@@ -899,16 +905,69 @@ export default function Dashboard() {
         <div className="lg:col-span-2 space-y-6">
           
           {/* Adherence Streak Widget */}
-          <div className="bg-gradient-to-r from-amber-500 to-orange-400 rounded-3xl p-5 text-slate-950 flex items-center justify-between shadow-lg relative overflow-hidden" dir="rtl">
-            <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full translate-x-8 -translate-y-8"></div>
-            <div>
-              <h4 className="font-black text-lg flex items-center gap-1.5">
-                🔥 سلسلة الالتزام المتواصلة: {streak} أيام!
+          <div className="bg-slate-900/90 backdrop-blur-md rounded-xl p-4 border-r-4 border-amber-500 text-right text-white shadow-lg relative overflow-hidden" dir="rtl">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800/80 mb-3">
+              <h4 className="font-black text-base text-white flex items-center gap-1.5">
+                🔥 بطل الالتزام! | {activeMember.name} 🏆
               </h4>
-              <p className="text-slate-900 text-xs mt-1 font-medium">خطوة رائعة نحو المحافظة على انتظام نسب دواءك بالدم لـ {activeMember.name}.</p>
             </div>
-            <div className="text-2xl font-black bg-white/20 px-4 py-2 rounded-xl text-right">
-              {totalSlotsToday > 0 ? Math.round((takenSlotsCount / totalSlotsToday) * 100) : 100}% التزام
+
+            {/* Stats Row */}
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-1.5 text-sm font-bold text-slate-300">
+                <span>📊 نسبة انتظامك:</span>
+                <span className="text-amber-400 font-black text-xl">
+                  {totalSlotsToday > 0 ? Math.round((takenSlotsCount / totalSlotsToday) * 100) : 100}%
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-sm font-bold text-slate-300">
+                <span>📅 السلسلة:</span>
+                <span className="text-amber-400 font-black text-xl">
+                  {streak} أيام متتالية
+                </span>
+              </div>
+            </div>
+
+            {/* Medical Context Subtext */}
+            <p className="text-slate-400 text-sm mt-2 font-medium leading-relaxed">
+              ممتاز! هذا الانتظام يحافظ على مستويات الدواء المستقرة في الدم ويسرّع من عملية شفائك بإذن الله.
+            </p>
+
+            {/* Visual Progress Tracker */}
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/60">
+              <div className="flex gap-1.5" dir="ltr">
+                {timelineItems.length > 0 ? (
+                  timelineItems.map((item, idx) => {
+                    const isTaken = takenSlots[`${item.med.id}-${item.time}`];
+                    return (
+                      <div
+                        key={idx}
+                        className={`w-3.5 h-3.5 rounded-full transition-all ${
+                          isTaken
+                            ? 'bg-amber-400 shadow-md shadow-amber-400/40 border border-amber-300'
+                            : 'bg-slate-800 border border-slate-700'
+                        }`}
+                        title={`${item.med.name} - ${item.time}`}
+                      />
+                    );
+                  })
+                ) : (
+                  // Fallback dots if no medications
+                  [1, 2, 3].map((i) => (
+                    <div key={i} className="w-3.5 h-3.5 rounded-full bg-slate-800 border border-slate-700" />
+                  ))
+                )}
+              </div>
+              <span className="text-[11px] font-black text-slate-300 mr-2">
+                {timelineItems.length > 0 ? (
+                  totalSlotsToday - takenSlotsCount > 0
+                    ? `متبقي ${totalSlotsToday - takenSlotsCount} جرعات اليوم لإكمال سلسلة إنجازك`
+                    : "اكتملت جميع جرعات اليوم لإكمال سلسلة إنجازك! 🎉"
+                ) : (
+                  "لم يتم إضافة أي أدوية بعد اليوم"
+                )}
+              </span>
             </div>
           </div>
 

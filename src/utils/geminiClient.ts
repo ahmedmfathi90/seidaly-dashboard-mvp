@@ -59,10 +59,11 @@ export function compressImage(file: File): Promise<{ base64Data: string, mimeTyp
   });
 }
 
-/**
- * Performs expert clinical OCR/Analysis on a prescription or medication box image directly from the browser.
- */
-export async function scanPrescriptionClient(base64Image: string, mimeType: string, medicalSpecialty?: string): Promise<Medication[]> {
+export async function scanPrescriptionClient(
+  base64Image: string,
+  mimeType: string,
+  medicalSpecialty?: string
+): Promise<{ medications: Medication[]; doctorName?: string; prescriptionDate?: string }> {
   const apiKey = getApiKey();
   const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
   const selectedSpecialty = medicalSpecialty || 'General';
@@ -74,16 +75,31 @@ CRITICAL INPUT CONTEXT:
 2. The handwritten instructions under each drug are written in clear Arabic (e.g., '٥ نقط بالفم', 'قطارة', 'شراب').
 
 YOUR 4-STEP DEDUCTION PROTOCOL:
-
 - Step 1 (Analyze the Clear Arabic First): Scan and read the handwritten Arabic dosage instructions beneath the English drug line. This is your absolute source of truth for the drug's 'Form' (شكل الدواء). If it says 'نقط' or 'قطارة', the medication MUST be pediatric oral drops. If it says 'شراب', it MUST be a syrup.
-- Step 2 (Apply the Specialty Filter): Filter your internal Egyptian market drug database based on the ${selectedSpecialty} and the drug 'Form' from Step 1. (Example: If the specialty is Pediatrics and the form is 'Drops', look ONLY for pediatric drops available in Egypt).
-- Step 3 (De-cipher the English Letters): Match the ambiguous or messy English starting/ending letters in the image with the filtered list from Step 2. (Example: If the line starts with an ambiguous 'L' or 'V', and the Arabic says 'نقط بالفم', look for common Egyptian pediatric drops like *Leoflox*, *Vi-Drop*, *Lacteol*, etc.).
+- Step 2 (Apply the Specialty Filter): Filter your internal Egyptian market drug database based on the ${selectedSpecialty} and the drug 'Form' from Step 1.
+- Step 3 (De-cipher the English Letters): Match the ambiguous or messy English starting/ending letters in the image with the filtered list from Step 2.
 - Step 4 (Enforce Medical Logic): You are STRICTLY FORBIDDEN from guessing adult tablets, capsules, or injections if the handwritten Arabic text or the doctor's specialty clearly indicates a pediatric oral drop or syrup.
 
-STRICT OUTPUT FORMAT:
-Return a clean JSON array of objects. Never leave medicationName empty, and NEVER output words like 'Unknown' or 'غير معروف'. If confidence is low, provide the top 2 closest matching English commercial drug names in Egypt as an array, so the UI can let the user choose.
+ADDITIONAL METADATA EXTRACTION:
+- doctorName: Extract the Doctor or Clinic name (e.g., "د. أحمد علي" or similar clinic title) if visible in the header/stamps/footer of the prescription.
+- prescriptionDate: Extract the date of the prescription (e.g., "2026-06-06"). Convert it to YYYY-MM-DD format if possible.
 
-Expected JSON keys: medicationName, dosage, frequency, duration, activeIngredient, medicalUse (In Arabic).`;
+STRICT OUTPUT FORMAT:
+Return a clean JSON object containing:
+{
+  "doctorName": "Doctor name or null",
+  "prescriptionDate": "Prescription date or null",
+  "medications": [
+    {
+      "medicationName": "Brand name of the drug",
+      "dosage": "dosage detail",
+      "frequency": "frequency detail",
+      "duration": "duration detail",
+      "activeIngredient": "active ingredient detail",
+      "medicalUse": "medical use in Arabic"
+    }
+  ]
+}`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   const maxRetries = 3;
@@ -164,24 +180,28 @@ Expected JSON keys: medicationName, dosage, frequency, duration, activeIngredien
   try {
     parsed = JSON.parse(cleanText);
   } catch (parseErr) {
-    console.warn("⚠️ JSON.parse failed, trying regex recovery for JSON array:", parseErr);
-    const match = cleanText.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    const objectMatch = cleanText.match(/\{\s*[\s\S]*\}/);
+    console.warn("⚠️ JSON.parse failed, trying regex recovery for JSON object:", parseErr);
+    const match = cleanText.match(/\{[\s\S]*\}/);
     if (match) {
       parsed = JSON.parse(match[0]);
-    } else if (objectMatch) {
-      parsed = JSON.parse(objectMatch[0]);
     } else {
       throw new Error("فشل في معالجة استجابة الذكاء الاصطناعي كملف JSON صالح.");
     }
   }
 
-  if (parsed.medications) {
-    parsed = parsed.medications;
+  let doctorName = "";
+  let prescriptionDate = "";
+  let medicationsArray: any[] = [];
+
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    doctorName = parsed.doctorName || "";
+    prescriptionDate = parsed.prescriptionDate || "";
+    medicationsArray = Array.isArray(parsed.medications) ? parsed.medications : [];
+  } else if (Array.isArray(parsed)) {
+    medicationsArray = parsed;
   }
-  
-  const arrayResult = Array.isArray(parsed) ? parsed : [parsed];
-  return arrayResult.map((m: any) => {
+
+  const medications = medicationsArray.map((m: any) => {
     const name = m.medicationName || m.name || "Unknown Medication";
     return {
       ...m,
@@ -193,6 +213,8 @@ Expected JSON keys: medicationName, dosage, frequency, duration, activeIngredien
       inventoryQty: 30
     };
   });
+
+  return { medications, doctorName, prescriptionDate };
 }
 
 /**
