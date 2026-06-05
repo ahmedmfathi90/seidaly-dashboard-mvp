@@ -104,43 +104,7 @@ export default function Dashboard() {
     localStorage.setItem('seidaly_membersData', JSON.stringify(membersData));
   }, [membersData]);
 
-  // Automatic archiving check for medications with past end dates
-  React.useEffect(() => {
-    let changed = false;
-    const todayStr = new Date().toISOString().split('T')[0];
-    const today = new Date(todayStr);
-    
-    const expiredMeds: Medication[] = [];
-    const activeMeds = medications.filter(med => {
-      if (med.endDate) {
-        const endD = new Date(med.endDate);
-        if (endD < today) {
-          changed = true;
-          expiredMeds.push(med);
-          return false;
-        }
-      }
-      return true;
-    });
 
-    if (changed) {
-      setMedications(activeMeds);
-      if (expiredMeds.length > 0) {
-        const newArchiveFolder: ArchivedVisit = {
-          id: "archive-expired-" + Math.random().toString(36).substring(7),
-          clinicName: "أدوية منتهية الصلاحية/المدة",
-          date: todayStr,
-          medsCount: expiredMeds.length,
-          medications: expiredMeds.map(m => ({
-            name: m.name,
-            dosage: m.dosage,
-            form: m.form
-          }))
-        };
-        setArchivedScans(prev => [newArchiveFolder, ...prev]);
-      }
-    }
-  }, [medications]);
 
   // Helper getters for active profile
   const currentMemberData = membersData[activeMemberId] || { medications: [], archivedScans: [], takenSlots: {} };
@@ -190,6 +154,44 @@ export default function Dashboard() {
       };
     });
   };
+
+  // Automatic archiving check for medications with past end dates
+  React.useEffect(() => {
+    let changed = false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date(todayStr);
+    
+    const expiredMeds: Medication[] = [];
+    const activeMeds = medications.filter(med => {
+      if (med.endDate) {
+        const endD = new Date(med.endDate);
+        if (endD < today) {
+          changed = true;
+          expiredMeds.push(med);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (changed) {
+      setMedications(activeMeds);
+      if (expiredMeds.length > 0) {
+        const newArchiveFolder: ArchivedVisit = {
+          id: "archive-expired-" + Math.random().toString(36).substring(7),
+          clinicName: "أدوية منتهية الصلاحية/المدة",
+          date: todayStr,
+          medsCount: expiredMeds.length,
+          medications: expiredMeds.map(m => ({
+            name: m.name,
+            dosage: m.dosage,
+            form: m.form
+          }))
+        };
+        setArchivedScans(prev => [newArchiveFolder, ...prev]);
+      }
+    }
+  }, [medications, setMedications, setArchivedScans]);
 
   // --- Flow State ---
   const [editableMedications, setEditableMedications] = useState<Medication[] | null>(null);
