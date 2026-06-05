@@ -69,18 +69,23 @@ export async function scanPrescriptionClient(base64Image: string, mimeType: stri
   const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
   const selectedSpecialty = medicalSpecialty || 'General';
 
-  const prompt = `You are an expert Egyptian Pharmacist reading a difficult prescription.
-CRITICAL CONTEXT: This prescription was written by a doctor specializing in '${selectedSpecialty}'.
+  const prompt = `You are an expert Egyptian Clinical Pharmacist specialized in reading highly illegible, cursive medical prescriptions. Your primary goal is to extract medication details with 100% medical accuracy by cross-referencing messy handwriting with contextual clues.
 
-YOUR STRICT INSTRUCTIONS:
+CRITICAL INPUT CONTEXT:
+1. The doctor's medical specialty is: ${selectedSpecialty} (e.g., الأطفال وحديثي الولادة).
+2. The handwritten instructions under each drug are written in clear Arabic (e.g., '٥ نقط بالفم', 'قطارة', 'شراب').
 
-You MUST heavily bias and filter your medication guesses based on the '${selectedSpecialty}'. If a handwritten word is ambiguous, you are FORBIDDEN from guessing a drug unrelated to this specialty.
+YOUR 4-STEP DEDUCTION PROTOCOL:
 
-NEVER output 'Unknown', 'غير معروف', or leave the medicationName empty. You must make your absolute best educated guess for the English Commercial Drug Name available in Egypt.
+- Step 1 (Analyze the Clear Arabic First): Scan and read the handwritten Arabic dosage instructions beneath the English drug line. This is your absolute source of truth for the drug's 'Form' (شكل الدواء). If it says 'نقط' or 'قطارة', the medication MUST be pediatric oral drops. If it says 'شراب', it MUST be a syrup.
+- Step 2 (Apply the Specialty Filter): Filter your internal Egyptian market drug database based on the ${selectedSpecialty} and the drug 'Form' from Step 1. (Example: If the specialty is Pediatrics and the form is 'Drops', look ONLY for pediatric drops available in Egypt).
+- Step 3 (De-cipher the English Letters): Match the ambiguous or messy English starting/ending letters in the image with the filtered list from Step 2. (Example: If the line starts with an ambiguous 'L' or 'V', and the Arabic says 'نقط بالفم', look for common Egyptian pediatric drops like *Leoflox*, *Vi-Drop*, *Lacteol*, etc.).
+- Step 4 (Enforce Medical Logic): You are STRICTLY FORBIDDEN from guessing adult tablets, capsules, or injections if the handwritten Arabic text or the doctor's specialty clearly indicates a pediatric oral drop or syrup.
 
-The medicationName MUST be in English letters. Do not translate the drug name itself to Arabic.
+STRICT OUTPUT FORMAT:
+Return a clean JSON array of objects. Never leave medicationName empty, and NEVER output words like 'Unknown' or 'غير معروف'. If confidence is low, provide the top 2 closest matching English commercial drug names in Egypt as an array, so the UI can let the user choose.
 
-Output a strict JSON array with keys: medicationName, dosage, frequency, duration, notes, activeIngredient, medicalUse (in Arabic).`;
+Expected JSON keys: medicationName, dosage, frequency, duration, activeIngredient, medicalUse (In Arabic).`;
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
