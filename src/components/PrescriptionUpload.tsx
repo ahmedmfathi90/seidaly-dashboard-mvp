@@ -252,6 +252,57 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
                 <ImageIcon className="w-4 h-4 text-slate-400" />
                 رفع صورة روشتة جاهزة من المعرض
               </button>
+
+              {/* Demo Data trigger to visualize designs without uploading */}
+              <button
+                type="button"
+                onClick={() => {
+                  const demoMeds: Medication[] = [
+                    {
+                      id: "demo-ambig",
+                      name: ["Biodroxil 250mg", "Biomega 100mg", "Baccidal 50mg"] as any,
+                      form: "Drops",
+                      dosage: "Unknown",
+                      frequency: "Unknown",
+                      activeIngredient: "Cefadroxil",
+                      medicalUse: "مضاد حيوي لعلاج الالتهابات البكتيرية للأطفال",
+                      detailedInfo: {
+                        sideEffects: ["قد يسبب اضطراب بسيط في المعدة"]
+                      }
+                    },
+                    {
+                      id: "demo-confirmed",
+                      name: "Panadol Extra",
+                      form: "Tablet",
+                      dosage: "500mg",
+                      frequency: "twice daily",
+                      activeIngredient: "Paracetamol + Caffeine",
+                      medicalUse: "مسكن للآلام وخافض للحرارة",
+                      detailedInfo: {
+                        sideEffects: ["قد يسبب أرق خفيف بسبب الكافيين"]
+                      },
+                      specialInstructions: "بعد الأكل"
+                    },
+                    {
+                      id: "demo-unclear",
+                      name: "Amoxil 500mg",
+                      form: "Capsule",
+                      dosage: "500mg",
+                      frequency: "Unknown",
+                      activeIngredient: "Amoxicillin",
+                      medicalUse: "مضاد حيوي واسع المجال",
+                      detailedInfo: {
+                        sideEffects: ["إسهال خفيف أو حساسية في الجلد"]
+                      }
+                    }
+                  ];
+                  onScanComplete(demoMeds);
+                }}
+                className="w-full py-4 rounded-xl border border-dashed border-teal-500/30 bg-teal-950/10 hover:bg-teal-950/20 text-teal-400 hover:text-teal-300 flex items-center justify-center gap-2 transition-all cursor-pointer text-xs font-bold"
+              >
+                <span>✨</span>
+                <span>استعراض كروت الأدوية والتصميم (بيانات تجريبية)</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-6 relative z-10">
