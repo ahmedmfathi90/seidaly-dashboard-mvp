@@ -138,25 +138,18 @@ export default function MedicationList({ medications, onUpdateMedications, onRes
 
               {/* ── Card Header ── */}
               <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
-                    isAmbiguous ? 'bg-amber-500/10 text-amber-400' : 'bg-teal-500/10 text-teal-400'
-                  }`}>
-                    💊
-                  </div>
-                  <div className="min-w-0">
-                    {!isAmbiguous && (
-                      <h3 className="text-base font-black text-white truncate">{rawName}</h3>
-                    )}
-                    {isAmbiguous && (
-                      <h3 className="text-base font-black text-amber-300">تأكيد اسم الدواء</h3>
-                    )}
-                    {!isAmbiguous && med.medicalUse && med.medicalUse !== 'غير محدد' && (
-                      <p className="text-[11px] text-teal-400/80 font-semibold truncate mt-0.5">
-                        {med.medicalUse}
-                      </p>
-                    )}
-                  </div>
+                <div className="min-w-0 flex-1">
+                  {!isAmbiguous && (
+                    <h3 className="text-base font-black text-white truncate">{rawName}</h3>
+                  )}
+                  {isAmbiguous && (
+                    <h3 className="text-base font-black text-amber-300">تأكيد اسم الدواء</h3>
+                  )}
+                  {!isAmbiguous && med.medicalUse && med.medicalUse !== 'غير محدد' && (
+                    <p className="text-[11px] text-teal-400/80 font-semibold truncate mt-0.5">
+                      {med.medicalUse}
+                    </p>
+                  )}
                 </div>
 
                 {/* ── Form / Dosage Tags ── */}
@@ -228,12 +221,21 @@ export default function MedicationList({ medications, onUpdateMedications, onRes
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2.5 bg-teal-950/15 border border-teal-900/30 p-3 rounded-xl mb-3">
-                      <span className="text-base">🕒</span>
-                      <div>
-                        <span className="block text-[10px] font-bold text-teal-500/60">الجرعة</span>
-                        <span className="block text-sm font-black text-teal-300">{toArabic(med.frequency)}</span>
+                    <div className="flex items-center justify-between gap-3 bg-teal-950/15 border border-teal-900/30 p-3 rounded-xl mb-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-base shrink-0">🕒</span>
+                        <div className="min-w-0">
+                          <span className="block text-[10px] font-bold text-teal-500/60">الجرعة</span>
+                          <span className="block text-sm font-black text-teal-300 truncate">{toArabic(med.frequency)}</span>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => setEditingMedication(med)}
+                        className="flex items-center gap-1 text-[10px] font-black text-teal-400 hover:text-white bg-slate-950/40 hover:bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        تعديل يدوياً
+                      </button>
                     </div>
                   )}
 
@@ -320,17 +322,10 @@ export default function MedicationList({ medications, onUpdateMedications, onRes
               )}
 
               {/* ── Bottom Actions Bar ── */}
-              <div className="px-5 py-3 border-t border-slate-800/50 flex items-center justify-between gap-3 bg-slate-950/20">
-                <button
-                  onClick={() => setEditingMedication(med)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-teal-400 bg-slate-950/40 hover:bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  تعديل يدوي
-                </button>
+              <div className="px-5 py-2.5 border-t border-slate-800/50 flex items-center justify-end bg-slate-950/20">
                 <button
                   onClick={() => handleDelete(cardId)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 border border-transparent hover:border-rose-900/40 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-rose-450 hover:bg-rose-950/20 border border-transparent px-3.5 py-1.5 rounded-xl transition-all cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   حذف الدواء
