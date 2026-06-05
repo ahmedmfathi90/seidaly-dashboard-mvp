@@ -45,6 +45,10 @@ self.addEventListener('message', (event) => {
         vibrate: vibrate || [200, 100, 200],
         tag: finalTag,
         data: data || '/',
+        actions: [
+          { action: 'action-taken', title: '✅ تم أخذ الجرعة' },
+          { action: 'action-remind', title: '⏰ تذكير بعد 15 دقيقة' }
+        ],
         dir: 'rtl',
         lang: 'ar',
         renotify: true,
@@ -146,7 +150,15 @@ async function checkBackgroundAlarms(): Promise<void> {
               badge: '/pwa-192x192.png',
               vibrate: [200, 100, 200],
               tag: notificationTag,
-              data: '/',
+              data: {
+                url: '/',
+                medId: med.id,
+                time: currentTimeStr
+              },
+              actions: [
+                { action: 'action-taken', title: '✅ تم أخذ الجرعة' },
+                { action: 'action-remind', title: '⏰ تذكير بعد 15 دقيقة' }
+              ],
               dir: 'rtl',
               lang: 'ar',
               renotify: true,
@@ -161,26 +173,92 @@ async function checkBackgroundAlarms(): Promise<void> {
 }
 
 // ─── NOTIFICATION CLICK HANDLER ─────────────────────────────────────────
-self.addEventListener('notificationclick', (event: NotificationEvent) => {
+self.addEventListener('notificationclick', (event: any) => {
   event.notification.close();
-  event.waitUntil(
-    self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((windowClients) => {
-        for (let i = 0; i < windowClients.length; i++) {
-          const client = windowClients[i];
-          const clientUrl = new URL(client.url, self.location.href).pathname;
-          const targetUrl = new URL(
-            event.notification.data || '/',
-            self.location.href
-          ).pathname;
-          if (clientUrl === targetUrl && 'focus' in client) {
-            return client.focus();
+
+  const action = event.action;
+  const notifData = event.notification.data || {};
+  const medId = typeof notifData === 'object' ? notifData.medId : undefined;
+  const time = typeof notifData === 'object' ? notifData.time : undefined;
+
+  if (action === 'action-taken' && medId && time) {
+    event.waitUntil(
+      (async () => {
+        try {
+          const cache = await caches.open('seidaly-alarm-data');
+          const response = await cache.match('/alarm-data.json');
+          if (response) {
+            const data = await response.json();
+            const membersData = data.membersData || {};
+            
+            let found = false;
+            for (const memberId of Object.keys(membersData)) {
+              const memberObj = membersData[memberId];
+              const meds = memberObj.medications || [];
+              if (meds.some((m: any) => m.id === medId)) {
+                if (!memberObj.takenSlots) memberObj.takenSlots = {};
+                memberObj.takenSlots[`${medId}-${time}`] = true;
+                found = true;
+                break;
+              }
+            }
+
+            if (found) {
+              await cache.put(
+                '/alarm-data.json',
+                new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } })
+              );
+
+              // Broadcast changes
+              const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+              windowClients.forEach(client => {
+                client.postMessage({
+                  type: 'TAKEN_SLOT_UPDATED',
+                  payload: { medId, time }
+                });
+              });
+            }
           }
+        } catch (err) {
+          console.error('[Seidaly SW] Error in action-taken handler:', err);
         }
-        if (self.clients.openWindow) {
-          return self.clients.openWindow(event.notification.data || '/');
+      })()
+    );
+  } else if (action === 'action-remind' && medId && time) {
+    event.waitUntil(
+      (async () => {
+        try {
+          const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+          windowClients.forEach(client => {
+            client.postMessage({
+              type: 'REMIND_LATER',
+              payload: { medId, time, delayMinutes: 15 }
+            });
+          });
+        } catch (err) {
+          console.error('[Seidaly SW] Error in action-remind handler:', err);
         }
-      })
-  );
+      })()
+    );
+  } else {
+    // Default open window logic
+    event.waitUntil(
+      self.clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then((windowClients) => {
+          const targetPath = typeof notifData === 'object' ? (notifData.url || '/') : (notifData || '/');
+          for (let i = 0; i < windowClients.length; i++) {
+            const client = windowClients[i];
+            const clientUrl = new URL(client.url, self.location.href).pathname;
+            const targetUrl = new URL(targetPath, self.location.href).pathname;
+            if (clientUrl === targetUrl && 'focus' in client) {
+              return client.focus();
+            }
+          }
+          if (self.clients.openWindow) {
+            return self.clients.openWindow(targetPath);
+          }
+        })
+    );
+  }
 });

@@ -12,6 +12,7 @@ import { Medication } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { lookupMedication, getSimulatedPrescriptionMeds } from '../data/medicationDb';
 import { scanPrescriptionClient, getDrugInfoClient, compressImage } from '../utils/geminiClient';
+import { generateMedicationSchedules, getRemainingDays } from '../utils/scheduleHelper';
 
 // Define typed schema for archive folders
 interface ArchivedVisit {
@@ -102,6 +103,44 @@ export default function Dashboard() {
   React.useEffect(() => {
     localStorage.setItem('seidaly_membersData', JSON.stringify(membersData));
   }, [membersData]);
+
+  // Automatic archiving check for medications with past end dates
+  React.useEffect(() => {
+    let changed = false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date(todayStr);
+    
+    const expiredMeds: Medication[] = [];
+    const activeMeds = medications.filter(med => {
+      if (med.endDate) {
+        const endD = new Date(med.endDate);
+        if (endD < today) {
+          changed = true;
+          expiredMeds.push(med);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (changed) {
+      setMedications(activeMeds);
+      if (expiredMeds.length > 0) {
+        const newArchiveFolder: ArchivedVisit = {
+          id: "archive-expired-" + Math.random().toString(36).substring(7),
+          clinicName: "أدوية منتهية الصلاحية/المدة",
+          date: todayStr,
+          medsCount: expiredMeds.length,
+          medications: expiredMeds.map(m => ({
+            name: m.name,
+            dosage: m.dosage,
+            form: m.form
+          }))
+        };
+        setArchivedScans(prev => [newArchiveFolder, ...prev]);
+      }
+    }
+  }, [medications]);
 
   // Helper getters for active profile
   const currentMemberData = membersData[activeMemberId] || { medications: [], archivedScans: [], takenSlots: {} };
@@ -261,12 +300,15 @@ export default function Dashboard() {
   const handleSavePrescription = () => {
     if (!editableMedications || editableMedications.length === 0) return;
 
-    const finalMeds = editableMedications.map(m => ({
-      ...m,
-      id: m.id || "med-" + Math.random().toString(36).substring(7),
-      inventoryQty: m.inventoryQty || (m.form.toLowerCase().includes('syrup') ? 100 : 20),
-      timings: m.timings || ["09:00 AM"],
-    }));
+    const finalMeds = editableMedications.map(m => {
+      const base = {
+        ...m,
+        id: m.id || "med-" + Math.random().toString(36).substring(7),
+        inventoryQty: m.inventoryQty || (m.form.toLowerCase().includes('syrup') ? 100 : 20),
+        timings: m.timings || ["09:00 AM"],
+      };
+      return generateMedicationSchedules(base) as Medication;
+    });
 
     setMedications(prev => [...prev, ...finalMeds]);
 
@@ -293,7 +335,7 @@ export default function Dashboard() {
     let enrichedMed: Medication = await getDrugInfoClient(newName);
 
     // Override with custom dosage or form if the user manually entered them in the form
-    enrichedMed = {
+    const baseMed = {
       ...enrichedMed,
       id: "med-manual-" + Math.random().toString(36).substring(7),
       dosage: newDosage.trim() ? newDosage : enrichedMed.dosage,
@@ -301,8 +343,9 @@ export default function Dashboard() {
       timings: ["09:00 AM"],
       inventoryQty: 30
     };
+    const finalMed = generateMedicationSchedules(baseMed) as Medication;
 
-    setMedications(prev => [...prev, enrichedMed!]);
+    setMedications(prev => [...prev, finalMed]);
     setNewName("");
     setNewDosage("");
     setManualAddOpen(false);
@@ -400,6 +443,39 @@ export default function Dashboard() {
 
   const totalSlotsToday = timelineItems.length;
   const takenSlotsCount = timelineItems.filter(item => takenSlots[`${item.med.id}-${item.time}`]).length;
+
+  const getNextDoseText = () => {
+    if (timelineItems.length === 0) return "لا يوجد جرعات مجدولة اليوم.";
+    
+    const getMinutesFromMidnight = (timeStr: string) => {
+      let [time, modifier] = timeStr.split(' ');
+      let [hoursStr, minutesStr] = time.split(':');
+      let hours = parseInt(hoursStr, 10);
+      let minutes = parseInt(minutesStr, 10) || 0;
+      if (modifier === 'PM' && hours < 12) hours += 12;
+      if (modifier === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    };
+
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const sortedItems = [...timelineItems].sort((a, b) => {
+      return getMinutesFromMidnight(a.time) - getMinutesFromMidnight(b.time);
+    });
+
+    const nextItem = sortedItems.find(item => {
+      const isTaken = takenSlots[`${item.med.id}-${item.time}`];
+      return !isTaken && getMinutesFromMidnight(item.time) > nowMinutes;
+    });
+
+    const targetItem = nextItem || sortedItems.find(item => !takenSlots[`${item.med.id}-${item.time}`]) || sortedItems[0];
+    
+    if (targetItem) {
+      return `الإشعار القادم الساعة: ${targetItem.time} (${targetItem.med.name})`;
+    }
+    return "اكتملت جميع جرعات اليوم! 🎉";
+  };
 
   if (scanOpen) {
     return (
@@ -933,6 +1009,30 @@ export default function Dashboard() {
             <p className="text-slate-400 text-sm mt-2 font-medium leading-relaxed">
               ممتاز! هذا الانتظام يحافظ على مستويات الدواء المستقرة في الدم ويسرّع من عملية شفائك بإذن الله.
             </p>
+
+            {/* Next Dose & Durations Subtext */}
+            <div className="text-slate-400 text-xs mt-3 flex flex-col gap-1 border-t border-slate-800/40 pt-2">
+              <p className="font-extrabold text-teal-400 flex items-center gap-1.5">
+                <span>⏰</span>
+                <span>{getNextDoseText()}</span>
+              </p>
+              
+              {medications.some(m => m.endDate) && (
+                <div className="flex gap-2 flex-wrap mt-1.5">
+                  {medications.filter(m => m.endDate).map(m => {
+                    const remaining = getRemainingDays(m.endDate);
+                    if (remaining !== null && remaining >= 0) {
+                      return (
+                        <span key={m.id} className="bg-slate-950/60 border border-slate-800 text-[10px] text-slate-350 font-bold px-2.5 py-1 rounded-lg">
+                          ⏳ متبقي {remaining} أيام لدواء {m.name}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Visual Progress Tracker */}
             <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/60">

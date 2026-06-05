@@ -56,7 +56,34 @@ function AppContent() {
       }
     };
 
-    const checkAlarms = () => {
+    /**
+     * Pulls updated alarm data (such as background lockscreen button clicks)
+     * from the Cache API and writes it to localStorage to trigger re-renders.
+     */
+    const syncAlarmDataFromCache = async () => {
+      try {
+        const cache = await caches.open('seidaly-alarm-data');
+        const response = await cache.match('/alarm-data.json');
+        if (!response) return;
+
+        const data = await response.json();
+        if (data && data.membersData) {
+          const localData = localStorage.getItem('seidaly_membersData');
+          if (JSON.stringify(data.membersData) !== localData) {
+            localStorage.setItem('seidaly_membersData', JSON.stringify(data.membersData));
+            // Dispatch custom storage event so other state components update
+            window.dispatchEvent(new Event('storage'));
+          }
+        }
+      } catch (err) {
+        // Silently skip
+      }
+    };
+
+    const checkAlarms = async () => {
+      // 1. Sync cache data first
+      await syncAlarmDataFromCache();
+
       const savedData = localStorage.getItem('seidaly_membersData');
       if (!savedData) return;
 
@@ -100,25 +127,38 @@ function AppContent() {
               if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
                 navigator.serviceWorker.ready.then(reg => {
                   if (reg.active) {
-                    reg.active.postMessage({
-                      type: 'SHOW_NOTIFICATION',
-                      payload: {
-                        title: notifTitle,
-                        body: notifBody,
-                        icon: '/pwa-192x192.png',
-                        badge: '/pwa-192x192.png',
-                        vibrate: [200, 100, 200],
-                        tag: notificationTag,
-                        data: '/'
-                      }
-                    });
+                     reg.active.postMessage({
+                       type: 'SHOW_NOTIFICATION',
+                       payload: {
+                         title: notifTitle,
+                         body: notifBody,
+                         icon: '/pwa-192x192.png',
+                         badge: '/pwa-192x192.png',
+                         vibrate: [200, 100, 200],
+                         tag: notificationTag,
+                         data: {
+                           url: '/',
+                           medId: med.id,
+                           time: currentTimeStr
+                         }
+                       }
+                     });
                   } else {
                     reg.showNotification(notifTitle, {
                       body: notifBody,
                       icon: '/pwa-192x192.png',
                       badge: '/pwa-192x192.png',
                       vibrate: [200, 100, 200],
-                      tag: notificationTag
+                      tag: notificationTag,
+                      data: {
+                        url: '/',
+                        medId: med.id,
+                        time: currentTimeStr
+                      },
+                      actions: [
+                        { action: 'action-taken', title: '✅ تم أخذ الجرعة' },
+                        { action: 'action-remind', title: '⏰ تذكير بعد 15 دقيقة' }
+                      ]
                     } as any);
                   }
                 });
@@ -137,15 +177,59 @@ function AppContent() {
       }
 
       // Keep Cache API in sync for background SW alarms
-      syncAlarmDataToCache();
+      await syncAlarmDataToCache();
     };
+
+    // Register Service Worker Message Listener for live lockscreen confirmations
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+      
+      if (event.data.type === 'TAKEN_SLOT_UPDATED') {
+        const { medId, time } = event.data.payload;
+        const saved = localStorage.getItem('seidaly_membersData');
+        if (saved) {
+          try {
+            const data = JSON.parse(saved);
+            let updated = false;
+            Object.keys(data).forEach(memberId => {
+              const memberObj = data[memberId];
+              const meds = memberObj.medications || [];
+              if (meds.some((m: any) => m.id === medId)) {
+                if (!memberObj.takenSlots) memberObj.takenSlots = {};
+                memberObj.takenSlots[`${medId}-${time}`] = true;
+                updated = true;
+              }
+            });
+            if (updated) {
+              localStorage.setItem('seidaly_membersData', JSON.stringify(data));
+              // Dispatch storage event to notify React components
+              window.dispatchEvent(new Event('storage'));
+            }
+          } catch (e) {
+            console.error('[Seidaly App] Error processing TAKEN_SLOT_UPDATED message:', e);
+          }
+        }
+      } else if (event.data.type === 'REMIND_LATER') {
+        const { delayMinutes } = event.data.payload;
+        alert(`⏰ تم تأجيل موعد الجرعة لمدة ${delayMinutes} دقيقة.`);
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+    }
 
     // Run immediately on mount
     checkAlarms();
 
     // Check every 60 seconds (aligned to the minute boundary)
     const intervalId = setInterval(checkAlarms, 60_000);
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+      }
+    };
   }, []);
 
   if (!hasSeenLanding) {

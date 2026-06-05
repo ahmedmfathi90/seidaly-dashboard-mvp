@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pill, CheckCircle2, AlertCircle, Edit3, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Medication } from '../types';
 import QuickEditModal from './QuickEditModal';
+import { generateMedicationSchedules } from '../utils/scheduleHelper';
 
 interface MedicationListProps {
   medications: Medication[];
@@ -58,7 +59,8 @@ export default function MedicationList({ medications, onUpdateMedications, onRes
   };
 
   const handleEditSave = (updated: Medication) => {
-    onUpdateMedications(medications.map(m => (m.id === updated.id ? updated : m)));
+    const finalMed = generateMedicationSchedules(updated) as Medication;
+    onUpdateMedications(medications.map(m => (m.id === finalMed.id ? finalMed : m)));
     setEditingMedication(null);
   };
 
