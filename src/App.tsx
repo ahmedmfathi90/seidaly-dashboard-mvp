@@ -11,70 +11,120 @@ function AppContent() {
   const { showPrompt, iosWarning, requestPermission, dismissPrompt } = useNotifications();
 
   // --- Global Medication Alarm Scheduler ---
+  // Keeps a local set of already-fired tags to prevent duplicate
+  // notifications within the same minute window.
+  const firedAlarmsRef = React.useRef<Set<string>>(new Set());
+
   React.useEffect(() => {
+    /**
+     * Formats current local time into the same "hh:mm AM/PM" format
+     * used by the QuickEditModal timings (e.g. "09:00 AM", "02:00 PM").
+     */
+    const getCurrentTimeStr = (): string => {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = now.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const strHours = hours < 10 ? '0' + hours : hours.toString();
+      const strMinutes = minutes < 10 ? '0' + minutes : minutes.toString();
+      return `${strHours}:${strMinutes} ${ampm}`;
+    };
+
+    /**
+     * Syncs alarm data to the Cache API so the Service Worker can read
+     * it during background sync events when localStorage is unavailable.
+     */
+    const syncAlarmDataToCache = async () => {
+      try {
+        const membersData = localStorage.getItem('seidaly_membersData');
+        const familyMembers = localStorage.getItem('seidaly_familyMembers');
+        if (!membersData) return;
+
+        const cache = await caches.open('seidaly-alarm-data');
+        const payload = JSON.stringify({
+          membersData: JSON.parse(membersData),
+          familyMembers: familyMembers ? JSON.parse(familyMembers) : [],
+        });
+        await cache.put(
+          '/alarm-data.json',
+          new Response(payload, { headers: { 'Content-Type': 'application/json' } })
+        );
+      } catch (err) {
+        // Cache API not available in some contexts — silently skip
+      }
+    };
+
     const checkAlarms = () => {
       const savedData = localStorage.getItem('seidaly_membersData');
       if (!savedData) return;
 
       try {
         const data = JSON.parse(savedData);
-        // Format current time as "hh:mm A" (e.g. "09:00 AM")
-        const now = new Date();
-        let hours = now.getHours();
-        const minutes = now.getMinutes();
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12; // 0 hour should be 12
-        const strHours = hours < 10 ? '0' + hours : hours.toString();
-        const strMinutes = minutes < 10 ? '0' + minutes : minutes.toString();
-        const currentTimeStr = `${strHours}:${strMinutes} ${ampm}`;
+        const currentTimeStr = getCurrentTimeStr();
 
-        // Get saved list of family profiles for names
+        // Purge stale dedup entries from previous minutes
+        const currentMinuteKey = currentTimeStr;
+        for (const tag of firedAlarmsRef.current) {
+          if (!tag.endsWith(currentMinuteKey)) {
+            firedAlarmsRef.current.delete(tag);
+          }
+        }
+
         const familySaved = localStorage.getItem('seidaly_familyMembers');
         const familyList = familySaved ? JSON.parse(familySaved) : [];
 
-        // Loop over all members in membersData
         Object.keys(data).forEach(memberId => {
           const memberObj = data[memberId];
           const meds = memberObj.medications || [];
           const memberProfile = familyList.find((f: any) => f.id === memberId);
-          const memberName = memberProfile ? memberProfile.name : (memberId === 'me' ? 'الأساسي' : 'المرافق');
+          const memberName = memberProfile
+            ? memberProfile.name
+            : memberId === 'me'
+              ? 'الأساسي'
+              : 'المرافق';
 
           meds.forEach((med: any) => {
             const timings = med.timings || [];
             if (timings.includes(currentTimeStr)) {
               const notificationTag = `alarm-${med.id}-${currentTimeStr}`;
-              
-              if ('serviceWorker' in navigator && 'Notification' in window) {
-                if (Notification.permission === 'granted') {
-                  navigator.serviceWorker.ready.then(reg => {
-                    if (reg.active) {
-                      reg.active.postMessage({
-                        type: 'SHOW_NOTIFICATION',
-                        payload: {
-                          title: `تذكير بموعد الدواء ⏰ (${med.name})`,
-                          body: `حان الآن موعد جرعة ${med.name} (${med.dosage}) للمريض: ${memberName}. يرجى تناولها بالوقت المحدد.`,
-                          icon: '/pwa-192x192.png',
-                          badge: '/pwa-192x192.png',
-                          vibrate: [200, 100, 200],
-                          tag: notificationTag,
-                          data: '/'
-                        }
-                      });
-                    } else {
-                      reg.showNotification(`تذكير بموعد الدواء ⏰ (${med.name})`, {
-                        body: `حان الآن موعد جرعة ${med.name} (${med.dosage}) للمريض: ${memberName}.`,
+
+              // Skip if already fired this minute
+              if (firedAlarmsRef.current.has(notificationTag)) return;
+              firedAlarmsRef.current.add(notificationTag);
+
+              const notifTitle = `تذكير بموعد الدواء ⏰ (${med.name})`;
+              const notifBody = `حان الآن موعد جرعة ${med.name} (${med.dosage}) للمريض: ${memberName}. يرجى تناولها بالوقت المحدد.`;
+
+              if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+                navigator.serviceWorker.ready.then(reg => {
+                  if (reg.active) {
+                    reg.active.postMessage({
+                      type: 'SHOW_NOTIFICATION',
+                      payload: {
+                        title: notifTitle,
+                        body: notifBody,
                         icon: '/pwa-192x192.png',
                         badge: '/pwa-192x192.png',
                         vibrate: [200, 100, 200],
-                        tag: notificationTag
-                      } as any);
-                    }
-                  });
-                }
+                        tag: notificationTag,
+                        data: '/'
+                      }
+                    });
+                  } else {
+                    reg.showNotification(notifTitle, {
+                      body: notifBody,
+                      icon: '/pwa-192x192.png',
+                      badge: '/pwa-192x192.png',
+                      vibrate: [200, 100, 200],
+                      tag: notificationTag
+                    } as any);
+                  }
+                });
               } else if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(`تذكير بموعد الدواء ⏰ (${med.name})`, {
-                  body: `حان الآن موعد جرعة ${med.name} (${med.dosage}) للمريض: ${memberName}.`,
+                new Notification(notifTitle, {
+                  body: notifBody,
                   icon: '/pwa-192x192.png',
                   tag: notificationTag
                 });
@@ -83,15 +133,18 @@ function AppContent() {
           });
         });
       } catch (err) {
-        console.error('Error in local alarm scheduler:', err);
+        console.error('[Seidaly] Error in local alarm scheduler:', err);
       }
+
+      // Keep Cache API in sync for background SW alarms
+      syncAlarmDataToCache();
     };
 
-    // Run checking immediately
+    // Run immediately on mount
     checkAlarms();
 
-    // Check every 60 seconds
-    const intervalId = setInterval(checkAlarms, 60000);
+    // Check every 60 seconds (aligned to the minute boundary)
+    const intervalId = setInterval(checkAlarms, 60_000);
     return () => clearInterval(intervalId);
   }, []);
 
