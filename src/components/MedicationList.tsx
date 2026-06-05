@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pill, Clock, CheckCircle2, AlertCircle, Edit3, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import { Pill, CheckCircle2, AlertCircle, Edit3, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Medication } from '../types';
 import QuickEditModal from './QuickEditModal';
 
@@ -9,298 +9,351 @@ interface MedicationListProps {
   onReset: () => void;
 }
 
-const translateToArabic = (text?: string): string => {
+/** Translates English drug forms / frequencies into clear Arabic */
+const toArabic = (text?: string): string => {
   if (!text) return 'غير محدد';
-  const trimmed = text.trim();
-  const lower = trimmed.toLowerCase();
+  const t = text.trim();
+  if (/[\u0600-\u06FF]/.test(t)) return t;
+  const lower = t.toLowerCase();
 
-  // If the text contains Arabic characters, return it directly
-  if (/[\u0600-\u06FF]/.test(trimmed)) {
-    return trimmed;
-  }
-
-  // Dictionary of translations
-  const dict: { [key: string]: string } = {
-    // Forms
-    'tablet': 'أقراص / كبسولات',
-    'tablets': 'أقراص / كبسولات',
-    'capsule': 'أقراص / كبسولات',
-    'capsules': 'أقراص / كبسولات',
-    'syrup': 'شراب',
-    'liquid': 'سائل',
-    'injection': 'حقنة / حقن',
-    'injections': 'حقنة / حقن',
-    'drop': 'نقط بالفم',
-    'drops': 'نقط بالفم',
-    'oral drops': 'نقط بالفم',
-    'ointment': 'مرهم / كريم',
-    'cream': 'كريم',
-    'gel': 'جل',
-    'inhaler': 'بخاخ',
-    'spray': 'بخاخ',
-    'suppository': 'لبوس',
+  const map: Record<string, string> = {
+    'tablet': 'أقراص', 'tablets': 'أقراص',
+    'capsule': 'كبسولات', 'capsules': 'كبسولات',
+    'syrup': 'شراب', 'liquid': 'سائل',
+    'injection': 'حقن', 'injections': 'حقن',
+    'drop': 'نقط', 'drops': 'نقط', 'oral drops': 'نقط بالفم',
+    'ointment': 'مرهم', 'cream': 'كريم', 'gel': 'جل',
+    'inhaler': 'بخاخ', 'spray': 'بخاخ', 'suppository': 'لبوس',
     'unknown': 'غير محدد',
-    
-    // Frequencies
-    'once daily': 'مرة واحدة يومياً',
-    'once a day': 'مرة واحدة يومياً',
-    'twice daily': 'مرتين يومياً',
-    'twice a day': 'مرتين يومياً',
-    'three times daily': 'ثلاث مرات يومياً',
-    'three times a day': 'ثلاث مرات يومياً',
-    'four times daily': 'أربع مرات يومياً',
-    'four times a day': 'أربع مرات يومياً',
-    'every 12 hours': 'كل 12 ساعة (مرتين يومياً)',
-    'every 8 hours': 'كل 8 ساعات (ثلاث مرات يومياً)',
-    'every 6 hours': 'كل 6 ساعات (أربع مرات يومياً)',
-    'every 24 hours': 'كل 24 ساعة (مرة واحدة يومياً)',
-    'as needed': 'عند اللزوم',
-    'when needed': 'عند اللزوم',
-    'with food': 'مع الطعام',
-    'before food': 'قبل الطعام',
-    'after food': 'بعد الطعام',
+    'once daily': 'مرة واحدة يومياً', 'once a day': 'مرة واحدة يومياً',
+    'twice daily': 'مرتين يومياً', 'twice a day': 'مرتين يومياً',
+    'three times daily': 'ثلاث مرات يومياً', 'three times a day': 'ثلاث مرات يومياً',
+    'every 12 hours': 'كل ١٢ ساعة', 'every 8 hours': 'كل ٨ ساعات',
+    'every 6 hours': 'كل ٦ ساعات', 'every 24 hours': 'كل ٢٤ ساعة',
+    'as needed': 'عند اللزوم', 'when needed': 'عند اللزوم',
   };
+  if (map[lower]) return map[lower];
 
-  // Check direct matches
-  if (dict[lower]) {
-    return dict[lower];
-  }
-
-  // Parse English frequency phrases/patterns (e.g. "every X hours")
   const hourMatch = lower.match(/every\s+(\d+)\s+hours?/);
-  if (hourMatch) {
-    const hours = hourMatch[1];
-    const times = Math.floor(24 / parseInt(hours));
-    if (times === 1) return `كل ${hours} ساعة (مرة واحدة يومياً)`;
-    if (times === 2) return `كل ${hours} ساعة (مرتين يومياً)`;
-    return `كل ${hours} ساعة (${times} مرات يومياً)`;
-  }
+  if (hourMatch) return `كل ${hourMatch[1]} ساعة`;
 
-  // Common replacements for mixed phrases
-  let result = trimmed;
-  result = result.replace(/\b(tablets?|capsules?|syrup|liquid|injections?|drops?|ointments?|cream|gel|inhaler|spray|suppositories)\b/gi, (match) => {
-    return dict[match.toLowerCase()] || match;
+  // Replace known English tokens inside mixed strings
+  let result = t;
+  Object.entries(map).forEach(([en, ar]) => {
+    result = result.replace(new RegExp(`\\b${en}\\b`, 'gi'), ar);
   });
-  result = result.replace(/\b(once daily|once a day|twice daily|twice a day|three times daily|three times a day|four times daily|four times a day|as needed|when needed)\b/gi, (match) => {
-    return dict[match.toLowerCase()] || match;
-  });
-
   return result;
 };
 
 export default function MedicationList({ medications, onUpdateMedications, onReset }: MedicationListProps) {
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
-  const [expandedCards, setExpandedCards] = useState<{[id: string]: boolean}>({});
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   if (!medications || medications.length === 0) return null;
 
-  const toggleAccordion = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedCards(prev => ({...prev, [id]: !prev[id]}));
+  // ── Handlers ──────────────────────────────────────────────────────────
+
+  const toggleAccordion = (id: string) => {
+    setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleEditSave = (updated: Medication) => {
-    const nextMeds = medications.map(m => m.id === updated.id ? updated : m);
-    onUpdateMedications(nextMeds);
+    onUpdateMedications(medications.map(m => (m.id === updated.id ? updated : m)));
     setEditingMedication(null);
   };
 
-  const handleEditDelete = () => {
-    if (editingMedication) {
-      const nextMeds = medications.filter(m => m.id !== editingMedication.id);
-      onUpdateMedications(nextMeds);
-      setEditingMedication(null);
+  const handleDelete = (medId: string) => {
+    if (confirm('هل أنت متأكد من حذف هذا الدواء من القائمة؟')) {
+      onUpdateMedications(medications.filter(m => m.id !== medId));
+      if (editingMedication?.id === medId) setEditingMedication(null);
     }
   };
 
   const resolveAmbiguity = (medId: string, selectedOption: string) => {
-    const nextMeds = medications.map(m => {
-      if (m.id === medId) {
-        return { ...m, name: selectedOption, medicationName: selectedOption } as Medication;
-      }
-      return m;
-    });
-    onUpdateMedications(nextMeds);
-    setExpandedCards(prev => ({...prev, [medId]: true}));
+    onUpdateMedications(
+      medications.map(m =>
+        m.id === medId
+          ? ({ ...m, name: selectedOption, medicationName: selectedOption } as Medication)
+          : m
+      )
+    );
+    setExpandedCards(prev => ({ ...prev, [medId]: true }));
   };
 
-  const isFrequencyUnclear = (freq?: string) => {
-    if (!freq) return true;
-    const lower = freq.toLowerCase();
-    return lower === 'unknown' || lower === 'غير محدد' || lower.trim() === '';
+  const isFreqUnclear = (f?: string) => {
+    if (!f) return true;
+    const l = f.trim().toLowerCase();
+    return !l || l === 'unknown' || l === 'غير محدد';
   };
+
+  // ── Render ────────────────────────────────────────────────────────────
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
+
+      {/* ── Section Header ─────────────────────────────────────── */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-800" dir="rtl">
         <div className="text-right">
-          <h2 className="text-2xl font-bold text-teal-400 flex items-center justify-start gap-2">
-            <CheckCircle2 className="w-6 h-6 text-teal-450" />
+          <h2 className="text-xl font-bold text-teal-400 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5" />
             جاهز للمراجعة والتعديل
           </h2>
-          <p className="text-slate-400 mt-1 text-sm">
-            تم فك الرموز. راجع الأدوية وحدد مواعيد الجرعات بدقة.
+          <p className="text-slate-400 mt-1 text-xs">
+            تم فك الرموز. راجع كل دواء وحدد مواعيد الجرعات بدقة.
           </p>
         </div>
-        <button 
+        <button
           onClick={onReset}
-          className="text-teal-400 hover:text-teal-300 text-sm font-extrabold bg-slate-950/40 hover:bg-slate-950 border border-slate-800 px-4 py-2 rounded-xl transition-all cursor-pointer"
+          className="text-teal-400 hover:text-teal-300 text-xs font-extrabold bg-slate-950/40 hover:bg-slate-950 border border-slate-800 px-4 py-2 rounded-xl transition-all cursor-pointer shrink-0"
         >
           مسح روشتة أخرى
         </button>
       </div>
 
+      {/* ── Cards ──────────────────────────────────────────────── */}
       <div className="space-y-4">
         {medications.map((med, index) => {
-          const rawName = med.name || (med as any).medicationName || (med as any).medicineName || "دواء غير معروف";
+          const cardId = med.id || index.toString();
+          const rawName = med.name || (med as any).medicationName || (med as any).medicineName || 'دواء غير معروف';
           const isAmbiguous = Array.isArray(rawName);
-          const isFreqUnclear = isFrequencyUnclear(med.frequency);
-          const isExpanded = expandedCards[med.id || index.toString()];
+          const isExpanded = expandedCards[cardId];
+          const hasActiveIngredient = med.activeIngredient && med.activeIngredient !== 'غير محدد';
+          const hasMedicalUse = med.medicalUse && med.medicalUse !== 'غير محدد';
+          const hasSpecialInstructions = med.specialInstructions && med.specialInstructions.toLowerCase() !== 'unknown' && med.specialInstructions.trim() !== '';
+          const hasSideEffects = med.detailedInfo?.sideEffects && med.detailedInfo.sideEffects.length > 0;
+          const hasAnyDetails = hasActiveIngredient || hasMedicalUse || hasSpecialInstructions || hasSideEffects || !isFreqUnclear(med.frequency);
 
           return (
-            <div 
-              key={med.id || index} 
-              className={`bg-slate-900/60 backdrop-blur-md rounded-2xl border ${isAmbiguous ? 'border-amber-500/50' : 'border-slate-800'} shadow-lg relative overflow-hidden flex flex-col p-5 transition-all`}
+            <div
+              key={cardId}
+              className={`rounded-2xl border overflow-hidden transition-all ${
+                isAmbiguous
+                  ? 'border-amber-500/40 bg-slate-900/70'
+                  : 'border-slate-800 bg-slate-900/60'
+              }`}
               dir="rtl"
             >
-              <div className={`absolute top-0 right-0 left-0 h-1 ${isAmbiguous ? 'bg-amber-500' : 'bg-teal-500'}`}></div>
+              {/* ── Top accent bar ── */}
+              <div className={`h-1 ${isAmbiguous ? 'bg-gradient-to-l from-amber-500 to-orange-400' : 'bg-gradient-to-l from-teal-500 to-teal-400'}`} />
 
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  {!isAmbiguous && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-black text-white">{rawName}</h3>
-                      <div className="flex items-center bg-teal-500/10 text-teal-400 text-[10px] font-extrabold px-2 py-0.5 rounded border border-teal-500/20">
-                        <CheckCircle className="w-3 h-3 ml-1" />
-                        مؤكد
-                      </div>
-                    </div>
-                  )}
+              {/* ── Card Header ── */}
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+                    isAmbiguous ? 'bg-amber-500/10 text-amber-400' : 'bg-teal-500/10 text-teal-400'
+                  }`}>
+                    💊
+                  </div>
+                  <div className="min-w-0">
+                    {!isAmbiguous && (
+                      <h3 className="text-base font-black text-white truncate">{rawName}</h3>
+                    )}
+                    {isAmbiguous && (
+                      <h3 className="text-base font-black text-amber-300">تأكيد اسم الدواء</h3>
+                    )}
+                    {!isAmbiguous && med.medicalUse && med.medicalUse !== 'غير محدد' && (
+                      <p className="text-[11px] text-teal-400/80 font-semibold truncate mt-0.5">
+                        {med.medicalUse}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingMedication(med);
-                  }}
-                  className="p-2 text-slate-400 hover:text-teal-400 hover:bg-slate-800 rounded-full transition-all border border-slate-800 cursor-pointer shrink-0 ml-[-8px] mt-[-8px]"
-                  title="تعديل تفاصيل الدواء يدوياً"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
+
+                {/* ── Form / Dosage Tags ── */}
+                {!isAmbiguous && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-bold text-slate-400 bg-slate-950/60 border border-slate-800 px-2 py-1 rounded-lg">
+                      {toArabic(med.form)}
+                    </span>
+                    {med.dosage && med.dosage !== 'Unknown' && (
+                      <span className="text-[10px] font-bold text-teal-400 bg-teal-950/30 border border-teal-900/40 px-2 py-1 rounded-lg">
+                        {toArabic(med.dosage)}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {isAmbiguous ? (
-                <div className="bg-amber-950/10 border border-amber-900/30 p-4 rounded-xl mb-2">
-                  <div className="flex items-start gap-2 text-amber-400 mb-4 font-bold text-sm">
-                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                    <span className="leading-relaxed">خط الروشتة غير واضح تماماً، يرجى اختيار الدواء الصحيح أولاً:</span>
+              {/* ── Ambiguous: Radio Options ── */}
+              {isAmbiguous && (
+                <div className="px-5 pb-4">
+                  <div className="flex items-center gap-2 text-amber-400 mb-3">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span className="text-xs font-bold leading-relaxed">
+                      ⚠️ الخط غير واضح بنسبة 100%.. يرجى تأكيد الدواء الصحيح:
+                    </span>
                   </div>
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     {rawName.map((option: string, idx: number) => (
-                      <label key={idx} className="flex items-center gap-3 p-3.5 rounded-lg border border-slate-800 bg-slate-950/50 cursor-pointer hover:bg-slate-900 transition-colors shadow-sm">
-                        <input 
-                          type="radio" 
-                          name={`med-${med.id}`} 
-                          className="w-4 h-4 text-amber-500 bg-slate-900 border-slate-700 focus:ring-amber-500 focus:ring-2 accent-amber-500 cursor-pointer" 
-                          onChange={() => resolveAmbiguity(med.id || index.toString(), option)} 
+                      <label
+                        key={idx}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-900/80 hover:border-slate-700 transition-all group"
+                      >
+                        <input
+                          type="radio"
+                          name={`ambig-${cardId}`}
+                          className="w-4 h-4 accent-amber-500 cursor-pointer shrink-0"
+                          onChange={() => resolveAmbiguity(cardId, option)}
                         />
-                        <span className="text-slate-200 font-bold text-sm">{option}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors block truncate">
+                            {option}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-semibold shrink-0">
+                          احتمال {idx + 1}
+                        </span>
                       </label>
                     ))}
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-4 animate-in fade-in duration-300">
-                  <div className="flex flex-wrap items-center text-slate-300 text-sm gap-2 font-semibold bg-slate-950/30 p-3 rounded-xl border border-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-teal-400">
-                      <Pill className="w-4 h-4" />
-                      <span>{translateToArabic(med.form)}</span>
-                    </div>
-                    <span className="text-slate-600 hidden sm:inline">|</span>
-                    <span className="font-bold text-slate-200">{translateToArabic(med.dosage)}</span>
-                  </div>
+              )}
 
-                  {isFreqUnclear ? (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-rose-950/20 border border-rose-900/30 p-4 rounded-xl">
-                      <div className="flex items-start gap-2 text-rose-400 text-sm font-bold w-full sm:w-auto">
-                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <span className="leading-relaxed">مواعيد الجرعة غير واضحة في الروشتة</span>
+              {/* ── Confirmed: Frequency + Accordion ── */}
+              {!isAmbiguous && (
+                <div className="px-5 pb-1">
+
+                  {/* Frequency Status */}
+                  {isFreqUnclear(med.frequency) ? (
+                    <div className="flex items-center justify-between gap-3 bg-rose-950/15 border border-rose-900/30 p-3 rounded-xl mb-3">
+                      <div className="flex items-center gap-2 text-rose-400 text-xs font-bold">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>مواعيد الجرعة غير واضحة في الروشتة</span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setEditingMedication(med)}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-slate-950 text-xs font-black py-2.5 px-5 rounded-xl shadow-lg shadow-teal-500/20 transition-all whitespace-nowrap cursor-pointer hover:scale-105 active:scale-95"
+                        className="text-[10px] font-black text-slate-950 bg-teal-500 hover:bg-teal-400 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0"
                       >
-                        📅 حدد مواعيد التذكير يدوياً
+                        📅 حدد يدوياً
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 bg-teal-950/20 border border-teal-900/30 p-4 rounded-xl">
-                      <div className="bg-teal-950/50 p-2 rounded-lg shrink-0">
-                        <Clock className="w-5 h-5 text-teal-400" />
-                      </div>
+                    <div className="flex items-center gap-2.5 bg-teal-950/15 border border-teal-900/30 p-3 rounded-xl mb-3">
+                      <span className="text-base">🕒</span>
                       <div>
-                        <span className="block text-xs font-bold text-teal-500/70 mb-0.5">مواعيد التذكير المستخرجة</span>
-                        <span className="block text-sm font-black text-teal-300">{translateToArabic(med.frequency)}</span>
+                        <span className="block text-[10px] font-bold text-teal-500/60">الجرعة</span>
+                        <span className="block text-sm font-black text-teal-300">{toArabic(med.frequency)}</span>
                       </div>
                     </div>
                   )}
 
-                  <div className="mt-2 border border-slate-800 rounded-xl overflow-hidden bg-slate-950/20">
-                    <button 
-                      onClick={(e) => toggleAccordion(med.id || index.toString(), e)}
-                      className="w-full flex items-center justify-between p-3.5 bg-slate-950/50 hover:bg-slate-900 text-slate-300 transition-colors cursor-pointer"
-                    >
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">التفاصيل السريرية للدواء</span>
-                      {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-                    </button>
-                    
-                    {isExpanded && (
-                      <div className="p-4 bg-slate-950/30 border-t border-slate-800 text-sm text-slate-300 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                        {med.activeIngredient && med.activeIngredient !== "غير محدد" && (
-                          <div>
-                            <span className="font-bold text-slate-500 block mb-1 text-xs">المادة الفعالة:</span>
-                            <span className="text-indigo-300 font-semibold">{med.activeIngredient}</span>
-                          </div>
-                        )}
-                        {med.medicalUse && med.medicalUse !== "غير محدد" && (
-                          <div>
-                            <span className="font-bold text-slate-500 block mb-1 text-xs">دواعي الاستعمال:</span>
-                            <span className="text-emerald-400/90 font-semibold leading-relaxed block">{med.medicalUse}</span>
-                          </div>
-                        )}
-                        {med.specialInstructions && med.specialInstructions.toLowerCase() !== "unknown" && med.specialInstructions.trim() !== "" && (
-                          <div className="flex items-start text-amber-300/80 bg-amber-950/20 p-3 rounded-lg border border-amber-950/50 mt-3 text-xs leading-relaxed">
-                            <AlertCircle className="w-4 h-4 ml-2 shrink-0 mt-0.5" />
-                            <span className="font-bold">{med.specialInstructions}</span>
-                          </div>
-                        )}
-                        {med.detailedInfo?.sideEffects && med.detailedInfo.sideEffects.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-slate-800/50">
-                            <span className="font-bold text-slate-500 block mb-2 text-xs">الأعراض الجانبية المحتملة:</span>
-                            <ul className="list-disc list-inside space-y-1 text-slate-400 text-xs">
-                              {med.detailedInfo.sideEffects.map((se, i) => (
-                                <li key={i}>{se}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {/* ── Accordion ── */}
+                  {hasAnyDetails && (
+                    <div className="border border-slate-800/60 rounded-xl overflow-hidden mb-3">
+                      <button
+                        onClick={() => toggleAccordion(cardId)}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-slate-950/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                      >
+                        <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                          🔽 تفاصيل الدواء والجرعة (اضغط للعرض)
+                        </span>
+                        {isExpanded
+                          ? <ChevronUp className="w-4 h-4 text-slate-500" />
+                          : <ChevronDown className="w-4 h-4 text-slate-500" />
+                        }
+                      </button>
+
+                      {isExpanded && (
+                        <div className="px-4 py-3.5 bg-slate-950/30 border-t border-slate-800 space-y-3 text-sm">
+
+                          {/* Dosage line */}
+                          {med.dosage && med.dosage !== 'Unknown' && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-500 shrink-0">•</span>
+                              <div>
+                                <span className="text-slate-500 text-xs font-bold">الجرعة: </span>
+                                <span className="text-white font-bold">{toArabic(med.dosage)}</span>
+                                {!isFreqUnclear(med.frequency) && (
+                                  <span className="text-teal-400 font-semibold"> ({toArabic(med.frequency)})</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Active Ingredient */}
+                          {hasActiveIngredient && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-500 shrink-0">•</span>
+                              <div>
+                                <span className="text-slate-500 text-xs font-bold">المادة الفعالة: </span>
+                                <span className="text-indigo-300 font-semibold">{med.activeIngredient}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Medical Use */}
+                          {hasMedicalUse && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-500 shrink-0">•</span>
+                              <div>
+                                <span className="text-slate-500 text-xs font-bold">الاستخدام: </span>
+                                <span className="text-emerald-400/90 font-semibold">{med.medicalUse}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Side Effects */}
+                          {hasSideEffects && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-500 shrink-0">•</span>
+                              <div>
+                                <span className="text-slate-500 text-xs font-bold">الأعراض الجانبية: </span>
+                                <span className="text-amber-300/80 font-semibold">
+                                  {med.detailedInfo!.sideEffects.join('، ')}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Special Instructions */}
+                          {hasSpecialInstructions && (
+                            <div className="bg-amber-950/15 border border-amber-900/30 p-2.5 rounded-lg flex items-start gap-2 text-xs">
+                              <span className="shrink-0 mt-0.5">⚠️</span>
+                              <span className="text-amber-300 font-bold leading-relaxed">{med.specialInstructions}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* ── Bottom Actions Bar ── */}
+              <div className="px-5 py-3 border-t border-slate-800/50 flex items-center justify-between gap-3 bg-slate-950/20">
+                <button
+                  onClick={() => setEditingMedication(med)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-teal-400 bg-slate-950/40 hover:bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  تعديل يدوي
+                </button>
+                <button
+                  onClick={() => handleDelete(cardId)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 border border-transparent hover:border-rose-900/40 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  حذف الدواء
+                </button>
+              </div>
             </div>
           );
         })}
       </div>
 
+      {/* ── QuickEdit Modal ───────────────────────────────────── */}
       {editingMedication && (
         <QuickEditModal
           medication={editingMedication}
           isOpen={!!editingMedication}
           onClose={() => setEditingMedication(null)}
           onSave={handleEditSave}
-          onDelete={handleEditDelete}
+          onDelete={() => {
+            if (editingMedication) {
+              onUpdateMedications(medications.filter(m => m.id !== editingMedication.id));
+              setEditingMedication(null);
+            }
+          }}
         />
       )}
     </div>
