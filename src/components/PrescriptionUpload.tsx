@@ -28,43 +28,59 @@ const specialties = [
 
 function ShimmerLoader() {
   const [statusIndex, setStatusIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
   const statuses = [
     "جاري قراءة خط الطبيب المكتوب...",
     "يتم الآن مطابقة الأدوية بنوع السن والتخصص الطبي...",
-    "نجهز الآن جدول المواعيد والتنبيهات باللغة العربية..."
+    "نتحقق من التوافقات الدوائية والجرعات المناسبة...",
+    "نجهز الآن جدول المواعيد والتنبيهات باللغة العربية...",
+    "اللمسات الأخيرة... جاري تنظيم النتائج لعرضها بوضوح ✨"
   ];
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const msgInterval = setInterval(() => {
       setStatusIndex((prev) => (prev + 1) % statuses.length);
-    }, 2500);
-    return () => clearInterval(interval);
+    }, 2200);
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => (prev >= 95 ? 95 : prev + Math.random() * 8));
+    }, 600);
+    return () => { clearInterval(msgInterval); clearInterval(progressInterval); };
   }, []);
 
   return (
     <div className="space-y-5 w-full text-right" dir="rtl">
+      {/* Progress Bar */}
+      <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-l from-teal-400 to-indigo-400 rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
       {/* 3 Shimmer Cards */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4 animate-pulse">
-            {/* Top Bar Shimmer */}
+          <div key={i} className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 space-y-3 animate-pulse" style={{ animationDelay: `${i * 150}ms` }}>
             <div className="flex justify-between items-center">
-              <div className="h-5 bg-slate-800 rounded w-1/3"></div>
-              <div className="h-8 w-8 bg-slate-800 rounded-full"></div>
+              <div className="h-4 bg-slate-800 rounded-lg w-2/5"></div>
+              <div className="flex gap-1.5">
+                <div className="h-5 w-12 bg-slate-800 rounded-lg"></div>
+                <div className="h-5 w-14 bg-slate-800/50 rounded-lg"></div>
+              </div>
             </div>
-            {/* Form & Dosage Shimmer */}
-            <div className="h-10 bg-slate-800/50 rounded-xl w-full"></div>
-            {/* Smart Dosage Warning / Timing Shimmer */}
-            <div className="h-14 bg-slate-850 rounded-xl w-full"></div>
-            {/* Accordion Shimmer */}
-            <div className="h-10 bg-slate-800/30 rounded-xl w-full"></div>
+            <div className="h-11 bg-slate-800/40 rounded-xl w-full"></div>
+            <div className="h-9 bg-slate-800/25 rounded-xl w-full"></div>
           </div>
         ))}
       </div>
+
       {/* Rotating Status Text */}
-      <div className="text-center py-4 bg-slate-950/40 rounded-2xl border border-slate-850">
-        <p className="text-teal-400 font-black text-sm animate-pulse tracking-wide transition-all duration-500">
-          ✨ {statuses[statusIndex]}
+      <div className="text-center py-3 bg-slate-950/50 rounded-2xl border border-slate-800">
+        <p className="text-teal-400 font-bold text-sm animate-pulse transition-all duration-300">
+          {statuses[statusIndex]}
+        </p>
+        <p className="text-slate-500 text-[10px] mt-1 font-semibold">
+          {Math.round(progress)}% مكتمل
         </p>
       </div>
     </div>

@@ -444,12 +444,24 @@ export default function Dashboard() {
             <p className="text-slate-400 text-xs font-medium">التقط صورة لعلبة الدواء ليتعرف عليها الذكاء الاصطناعي ويجلب لك تفاصيلها فوراً</p>
           </div>
 
-          {/* Scan Status Loader */}
+          {/* Scan Status Loader (Skeleton Screen) */}
           {isBoxScanning && (
-            <div className="flex flex-col items-center justify-center p-8 bg-slate-950/40 border border-slate-800 rounded-2xl max-w-sm mx-auto mb-6 animate-pulse">
-              <Loader2 className="w-10 h-10 text-teal-400 animate-spin mb-3" />
-              <p className="text-sm font-bold text-teal-300">جاري فحص العلبة بالذكاء الاصطناعي...</p>
-              <p className="text-[10px] text-slate-400 mt-1 font-medium">يرجى إبقاء هاتفك ثابتاً أثناء التحليل</p>
+            <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4 animate-pulse w-full max-w-sm mx-auto mb-6 text-right" dir="rtl">
+              <div className="flex justify-between items-center">
+                <div className="h-5 bg-slate-800 rounded w-1/3"></div>
+                <div className="h-8 w-8 bg-slate-800 rounded-xl"></div>
+              </div>
+              <div className="h-10 bg-slate-800/50 rounded-xl w-full"></div>
+              <div className="h-20 bg-slate-850 rounded-xl w-full"></div>
+              
+              <div className="text-center pt-3 border-t border-slate-800/50">
+                <p className="text-teal-400 font-bold text-xs animate-pulse">
+                  ✨ جاري فحص تفاصيل العلبة بالذكاء الاصطناعي...
+                </p>
+                <p className="text-slate-500 text-[10px] mt-1 font-semibold">
+                  لحظات ويتم استخراج المادة الفعالة والجرعة
+                </p>
+              </div>
             </div>
           )}
 
