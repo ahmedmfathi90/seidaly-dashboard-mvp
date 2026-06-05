@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pill, Clock, CheckCircle2, AlertCircle, Edit3, Settings, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import { Pill, Clock, CheckCircle2, AlertCircle, Edit3, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
 import { Medication } from '../types';
 import QuickEditModal from './QuickEditModal';
 
@@ -8,6 +8,85 @@ interface MedicationListProps {
   onUpdateMedications: (updatedMeds: Medication[]) => void;
   onReset: () => void;
 }
+
+const translateToArabic = (text?: string): string => {
+  if (!text) return 'غير محدد';
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+
+  // If the text contains Arabic characters, return it directly
+  if (/[\u0600-\u06FF]/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Dictionary of translations
+  const dict: { [key: string]: string } = {
+    // Forms
+    'tablet': 'أقراص / كبسولات',
+    'tablets': 'أقراص / كبسولات',
+    'capsule': 'أقراص / كبسولات',
+    'capsules': 'أقراص / كبسولات',
+    'syrup': 'شراب',
+    'liquid': 'سائل',
+    'injection': 'حقنة / حقن',
+    'injections': 'حقنة / حقن',
+    'drop': 'نقط بالفم',
+    'drops': 'نقط بالفم',
+    'oral drops': 'نقط بالفم',
+    'ointment': 'مرهم / كريم',
+    'cream': 'كريم',
+    'gel': 'جل',
+    'inhaler': 'بخاخ',
+    'spray': 'بخاخ',
+    'suppository': 'لبوس',
+    'unknown': 'غير محدد',
+    
+    // Frequencies
+    'once daily': 'مرة واحدة يومياً',
+    'once a day': 'مرة واحدة يومياً',
+    'twice daily': 'مرتين يومياً',
+    'twice a day': 'مرتين يومياً',
+    'three times daily': 'ثلاث مرات يومياً',
+    'three times a day': 'ثلاث مرات يومياً',
+    'four times daily': 'أربع مرات يومياً',
+    'four times a day': 'أربع مرات يومياً',
+    'every 12 hours': 'كل 12 ساعة (مرتين يومياً)',
+    'every 8 hours': 'كل 8 ساعات (ثلاث مرات يومياً)',
+    'every 6 hours': 'كل 6 ساعات (أربع مرات يومياً)',
+    'every 24 hours': 'كل 24 ساعة (مرة واحدة يومياً)',
+    'as needed': 'عند اللزوم',
+    'when needed': 'عند اللزوم',
+    'with food': 'مع الطعام',
+    'before food': 'قبل الطعام',
+    'after food': 'بعد الطعام',
+  };
+
+  // Check direct matches
+  if (dict[lower]) {
+    return dict[lower];
+  }
+
+  // Parse English frequency phrases/patterns (e.g. "every X hours")
+  const hourMatch = lower.match(/every\s+(\d+)\s+hours?/);
+  if (hourMatch) {
+    const hours = hourMatch[1];
+    const times = Math.floor(24 / parseInt(hours));
+    if (times === 1) return `كل ${hours} ساعة (مرة واحدة يومياً)`;
+    if (times === 2) return `كل ${hours} ساعة (مرتين يومياً)`;
+    return `كل ${hours} ساعة (${times} مرات يومياً)`;
+  }
+
+  // Common replacements for mixed phrases
+  let result = trimmed;
+  result = result.replace(/\b(tablets?|capsules?|syrup|liquid|injections?|drops?|ointments?|cream|gel|inhaler|spray|suppositories)\b/gi, (match) => {
+    return dict[match.toLowerCase()] || match;
+  });
+  result = result.replace(/\b(once daily|once a day|twice daily|twice a day|three times daily|three times a day|four times daily|four times a day|as needed|when needed)\b/gi, (match) => {
+    return dict[match.toLowerCase()] || match;
+  });
+
+  return result;
+};
 
 export default function MedicationList({ medications, onUpdateMedications, onReset }: MedicationListProps) {
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
@@ -135,10 +214,10 @@ export default function MedicationList({ medications, onUpdateMedications, onRes
                   <div className="flex flex-wrap items-center text-slate-300 text-sm gap-2 font-semibold bg-slate-950/30 p-3 rounded-xl border border-slate-800/50">
                     <div className="flex items-center gap-1.5 text-teal-400">
                       <Pill className="w-4 h-4" />
-                      <span>{med.form === 'Unknown' ? 'قرص' : med.form}</span>
+                      <span>{translateToArabic(med.form)}</span>
                     </div>
                     <span className="text-slate-600 hidden sm:inline">|</span>
-                    <span className="font-bold text-slate-200">{med.dosage === 'Unknown' ? 'الجرعة غير محددة' : med.dosage}</span>
+                    <span className="font-bold text-slate-200">{translateToArabic(med.dosage)}</span>
                   </div>
 
                   {isFreqUnclear ? (
@@ -161,7 +240,7 @@ export default function MedicationList({ medications, onUpdateMedications, onRes
                       </div>
                       <div>
                         <span className="block text-xs font-bold text-teal-500/70 mb-0.5">مواعيد التذكير المستخرجة</span>
-                        <span className="block text-sm font-black text-teal-300">{med.frequency}</span>
+                        <span className="block text-sm font-black text-teal-300">{translateToArabic(med.frequency)}</span>
                       </div>
                     </div>
                   )}
@@ -191,7 +270,7 @@ export default function MedicationList({ medications, onUpdateMedications, onRes
                         )}
                         {med.specialInstructions && med.specialInstructions.toLowerCase() !== "unknown" && med.specialInstructions.trim() !== "" && (
                           <div className="flex items-start text-amber-300/80 bg-amber-950/20 p-3 rounded-lg border border-amber-950/50 mt-3 text-xs leading-relaxed">
-                            <Settings className="w-4 h-4 ml-2 shrink-0 mt-0.5" />
+                            <AlertCircle className="w-4 h-4 ml-2 shrink-0 mt-0.5" />
                             <span className="font-bold">{med.specialInstructions}</span>
                           </div>
                         )}

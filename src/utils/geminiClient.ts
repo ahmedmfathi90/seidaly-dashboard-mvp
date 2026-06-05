@@ -23,7 +23,7 @@ export function compressImage(file: File): Promise<{ base64Data: string, mimeTyp
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const MAX_DIM = 1200;
+        const MAX_DIM = 800;
         let width = img.width;
         let height = img.height;
 
@@ -47,7 +47,7 @@ export function compressImage(file: File): Promise<{ base64Data: string, mimeTyp
         ctx.drawImage(img, 0, 0, width, height);
 
         // Always output as highly compressed image/jpeg to ensure compatibility and speed
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.60);
         const base64Str = compressedBase64.split(",")[1] || compressedBase64;
         resolve({ base64Data: base64Str, mimeType: "image/jpeg" });
       };
