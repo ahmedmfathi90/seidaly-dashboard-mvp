@@ -17,46 +17,44 @@ function getApiKey(): string {
  * Reduces upload payloads from 10MB down to ~150KB, ensuring 100% upload success & lightning-fast speed.
  */
 export function compressImage(file: File): Promise<{ base64Data: string, mimeType: string }> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 1024;
-        const MAX_HEIGHT = 1024;
+        const MAX_DIM = 1200;
         let width = img.width;
         let height = img.height;
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
           }
         }
 
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
+        if (!ctx) {
+          reject(new Error("Failed to get 2D context from canvas"));
+          return;
         }
+        ctx.drawImage(img, 0, 0, width, height);
 
         // Always output as highly compressed image/jpeg to ensure compatibility and speed
         const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
         const base64Str = compressedBase64.split(",")[1] || compressedBase64;
         resolve({ base64Data: base64Str, mimeType: "image/jpeg" });
       };
+      img.onerror = (err) => reject(err);
       img.src = event.target?.result as string;
     };
-    reader.onerror = () => {
-      resolve({ base64Data: "", mimeType: "image/jpeg" });
-    };
+    reader.onerror = (err) => reject(err);
     reader.readAsDataURL(file);
   });
 }
@@ -87,93 +85,114 @@ Return a clean JSON array of objects. Never leave medicationName empty, and NEVE
 
 Expected JSON keys: medicationName, dosage, frequency, duration, activeIngredient, medicalUse (In Arabic).`;
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const maxRetries = 3;
+  let attempt = 0;
+  let response: Response | null = null;
+  let lastError: any = null;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: cleanBase64
-              }
-            }
-          ]
-        }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.1
-        }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Gemini API returned status ${response.status}`);
-    }
-
-    const result = await response.json();
-    
-    // Check if Gemini API returned candidates with content parts
-    const textOutput = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textOutput) {
-      console.warn("⚠️ Empty candidates response from Gemini API, checking for safety blocks:", result);
-      if (result.promptFeedback?.blockReason) {
-        throw new Error(`تم حظر الصورة بواسطة إعدادات الحماية لـ Gemini: ${result.promptFeedback.blockReason}`);
-      }
-      throw new Error("لم نتمكن من استخراج نص من الصورة. يرجى التأكد من وضوح الصورة وخلوها من الظلال.");
-    }
-
-    let cleanText = textOutput.trim();
-    // Resilient cleaning of markdown code blocks
-    if (cleanText.includes("```")) {
-      cleanText = cleanText.replace(/```json/gi, "").replace(/```/g, "").trim();
-    }
-
-    let parsed;
+  while (attempt <= maxRetries) {
     try {
-      parsed = JSON.parse(cleanText);
-    } catch (parseErr) {
-      console.warn("⚠️ JSON.parse failed, trying regex recovery for JSON array:", parseErr);
-      const match = cleanText.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      const objectMatch = cleanText.match(/\{\s*[\s\S]*\}/);
-      if (match) {
-        parsed = JSON.parse(match[0]);
-      } else if (objectMatch) {
-        parsed = JSON.parse(objectMatch[0]);
-      } else {
-        throw new Error("فشل في معالجة استجابة الذكاء الاصطناعي كملف JSON صالح.");
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: cleanBase64
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.1
+          }
+        })
+      });
+
+      if (response.status === 503) {
+        throw new Error(`Gemini API returned status 503`);
       }
-    }
 
-    if (parsed.medications) {
-      parsed = parsed.medications;
-    }
-    
-    const arrayResult = Array.isArray(parsed) ? parsed : [parsed];
-    return arrayResult.map((m: any) => {
-      const name = m.medicationName || m.name || "Unknown Medication";
-      return {
-        ...m,
-        id: m.id || "med-" + Math.random().toString(36).substring(7),
-        name: name,
-        form: m.form || "Tablet",
-        specialInstructions: m.notes || m.specialInstructions || "لا يوجد",
-        timings: ["09:00 AM"],
-        inventoryQty: 30
-      };
-    });
+      if (!response.ok) {
+        throw new Error(`Gemini API returned status ${response.status}`);
+      }
 
-  } catch (err: any) {
-    console.error("⚠️ Client-side Gemini scan failed:", err);
-    throw new Error(err.message || "⚠️ لم نتمكن من التعرف على الدواء بدقة. يرجى تصوير العلبة أو الروشتة بوضوح في إضاءة جيدة والمحاولة مجدداً.");
+      break; // Success! Exit the while loop
+    } catch (err: any) {
+      lastError = err;
+      if (attempt < maxRetries && (err.message?.includes('503') || response?.status === 503)) {
+        attempt++;
+        console.warn(`Attempt ${attempt} failed with 503. Retrying in 2000ms...`, err);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        continue;
+      }
+      throw err; // Re-throw if it's not a 503 or we've run out of retries
+    }
   }
+
+  if (!response || !response.ok) {
+    throw lastError || new Error("فشل الاتصال بخدمة Gemini API.");
+  }
+
+  const result = await response.json();
+  
+  // Check if Gemini API returned candidates with content parts
+  const textOutput = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textOutput) {
+    console.warn("⚠️ Empty candidates response from Gemini API, checking for safety blocks:", result);
+    if (result.promptFeedback?.blockReason) {
+      throw new Error(`تم حظر الصورة بواسطة إعدادات الحماية لـ Gemini: ${result.promptFeedback.blockReason}`);
+    }
+    throw new Error("لم نتمكن من استخراج نص من الصورة. يرجى التأكد من وضوح الصورة وخلوها من الظلال.");
+  }
+
+  let cleanText = textOutput.trim();
+  // Resilient cleaning of markdown code blocks
+  if (cleanText.includes("```")) {
+    cleanText = cleanText.replace(/```json/gi, "").replace(/```/g, "").trim();
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleanText);
+  } catch (parseErr) {
+    console.warn("⚠️ JSON.parse failed, trying regex recovery for JSON array:", parseErr);
+    const match = cleanText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    const objectMatch = cleanText.match(/\{\s*[\s\S]*\}/);
+    if (match) {
+      parsed = JSON.parse(match[0]);
+    } else if (objectMatch) {
+      parsed = JSON.parse(objectMatch[0]);
+    } else {
+      throw new Error("فشل في معالجة استجابة الذكاء الاصطناعي كملف JSON صالح.");
+    }
+  }
+
+  if (parsed.medications) {
+    parsed = parsed.medications;
+  }
+  
+  const arrayResult = Array.isArray(parsed) ? parsed : [parsed];
+  return arrayResult.map((m: any) => {
+    const name = m.medicationName || m.name || "Unknown Medication";
+    return {
+      ...m,
+      id: m.id || "med-" + Math.random().toString(36).substring(7),
+      name: name,
+      form: m.form || "Tablet",
+      specialInstructions: m.notes || m.specialInstructions || "لا يوجد",
+      timings: ["09:00 AM"],
+      inventoryQty: 30
+    };
+  });
 }
 
 /**

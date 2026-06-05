@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Image as ImageIcon, Loader2, X, AlertCircle, Sparkles } from 'lucide-react';
 import { Medication } from '../types';
-import { scanPrescriptionClient } from '../utils/geminiClient';
+import { scanPrescriptionClient, compressImage } from '../utils/geminiClient';
 
 interface PrescriptionUploadProps {
   onScanComplete: (medications: Medication[]) => void;
@@ -26,53 +26,11 @@ const specialties = [
   "الأورام"
 ];
 
-function compressImage(file: File): Promise<{ base64Data: string, mimeType: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const maxDim = 1500;
-
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas 2D context'));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        const base64Data = dataUrl.split(',')[1] || dataUrl;
-        resolve({ base64Data, mimeType: 'image/jpeg' });
-      };
-      img.onerror = (err) => reject(err);
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = (err) => reject(err);
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function PrescriptionUpload({ onScanComplete, onCancel }: PrescriptionUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [medicalSpecialty, setMedicalSpecialty] = useState("");
 
@@ -103,7 +61,7 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
   const handleScan = async () => {
     if (!file) return;
 
-    setIsScanning(true);
+    setIsLoading(true);
     setError(null);
 
     try {
@@ -119,7 +77,7 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
       console.error(err);
       setError(err.message || 'حدث خطأ غير متوقع أثناء معالجة الروشتة بذكاء صيدلي.');
     } finally {
-      setIsScanning(false);
+      setIsLoading(false);
     }
   };
 
@@ -226,7 +184,7 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
       ) : (
         <div className="space-y-6 relative z-10">
           <div className="relative rounded-2xl overflow-hidden border border-slate-850 bg-slate-950/40 group pre-card">
-            {isScanning && (
+            {isLoading && (
               <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm pointer-events-none">
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="w-10 h-10 text-teal-400 animate-spin" />
@@ -241,7 +199,7 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
               className="max-h-80 w-full object-contain mx-auto opacity-95 group-hover:opacity-100 transition-opacity"
             />
             
-            {!isScanning && (
+            {!isLoading && (
               <button 
                 onClick={clearSelection}
                 className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur text-slate-300 p-2.5 rounded-full shadow-md hover:bg-slate-800 hover:text-rose-400 transition-colors border border-slate-800 cursor-pointer"
@@ -259,10 +217,10 @@ export default function PrescriptionUpload({ onScanComplete, onCancel }: Prescri
 
           <button
             onClick={handleScan}
-            disabled={isScanning}
+            disabled={isLoading}
             className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-400 hover:to-teal-500 disabled:from-teal-600 disabled:to-teal-700 text-slate-950 font-black py-4 px-4 rounded-2xl flex items-center justify-center transition-all shadow-xl shadow-teal-500/10 disabled:cursor-not-allowed text-base cursor-pointer"
           >
-            {isScanning ? (
+            {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 ml-2 animate-spin text-slate-950" />
                 جاري استخراج الأدوية...
